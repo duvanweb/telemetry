@@ -14,7 +14,8 @@ import (
 type Controllers struct {
 	fx.In
 
-	Health *controllers.Health
+	Health  *controllers.Health
+	Vehicle *controllers.Vehicle
 }
 
 // Router wraps the chi mux and registered routes.
@@ -31,14 +32,19 @@ func NewRouter(server *chi.Mux, c Controllers) *Router {
 // start mounts middlewares and registers all routes under the base path.
 func (r *Router) start(basePath string) http.Handler {
 	r.server.Use(middleware.RequestID)
-	r.server.Use(middleware.RealIP)
 	r.server.Use(middleware.Logger)
 	r.server.Use(middleware.Recoverer)
 
 	r.server.Get("/health", r.controllers.Health.GetHealth)
 
 	r.server.Route(basePath, func(route chi.Router) {
-		// Register business routes here as they are added.
+		route.Route("/vehicles", func(v chi.Router) {
+			v.Post("/", r.controllers.Vehicle.Create)
+			v.Get("/", r.controllers.Vehicle.List)
+			v.Delete("/{id}", r.controllers.Vehicle.SoftDelete)
+			v.Get("/{id}", r.controllers.Vehicle.GetByID)
+			v.Get("/plates/{plate}", r.controllers.Vehicle.FindByPlate)
+		})
 	})
 
 	return r.server

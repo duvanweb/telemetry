@@ -20,11 +20,15 @@ vendor/
 # IDE
 .idea/
 .vscode/
+.claude/
+specs
 *.swp
 
 # OS
 .DS_Store
 Thumbs.db
+skills-lock.json
+CLAUDE.md
 
 # Claude local settings
 .claude/settings.local.json
