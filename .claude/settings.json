@@ -1,0 +1,10 @@
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-code-T6KZmxB4sOrePpmTFXSYNq37Kxp87b9pLY5yqXR9",
+    "ANTHROPIC_BASE_URL": "http://192.168.40.60:8000",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "code/glm-5.2-anthropic[1m]",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "code/glm-5.2-anthropic[1m]",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "code/glm-5.2-anthropic[1m]",
+    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": 1
+  }
+}
