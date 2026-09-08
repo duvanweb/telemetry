@@ -9,9 +9,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 
+	"github.com/telemetry-platform/geo-service/internal/core/ports/resources"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/api/controllers"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/env"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/logger"
+	"github.com/telemetry-platform/geo-service/internal/infrastructure/redis/cache"
 )
 
 // Module wires the HTTP router and server into FX.
@@ -22,6 +24,8 @@ func Module() fx.Option {
 			chi.NewRouter,
 			NewRouter,
 			controllers.NewHealth,
+			controllers.NewPosition,
+			fx.Annotate(cache.NewCache, fx.As(new(resources.PositionCache))),
 		),
 		fx.Invoke(registerHooks),
 	)

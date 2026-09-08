@@ -52,12 +52,12 @@ telemetry/
 ├── geo-service/       # Backend Go — geolocation per vehicle
 ├── alert-service/     # Backend Go — alerts (geofences, speed, ...)
 ├── telemetry-web/     # Frontend React (pending)
-└── telemetry-movil/   # App React Native (pending)
+└── telemetry-mobile/   # App React Native (pending)
 ```
 
 ## Pending (future specs)
 
-- Frontend apps: `telemetry-web`, `telemetry-movil`.
+- Frontend apps: `telemetry-web`, `telemetry-mobile`.
 - Infrastructure: PostgreSQL, Redis, Kafka, Docker Compose.
 - Business endpoints and domain logic.
 - Readiness checks with real dependencies.
