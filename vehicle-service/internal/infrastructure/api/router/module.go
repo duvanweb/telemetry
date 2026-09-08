@@ -9,7 +9,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/fx"
 
+	"github.com/telemetry-platform/vehicle-service/internal/core/ports/repositories"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/api/controllers"
+	vehiclerepo "github.com/telemetry-platform/vehicle-service/internal/infrastructure/postgres/repositories/vehicle"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/pkg/env"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/pkg/logger"
 )
@@ -22,6 +24,11 @@ func Module() fx.Option {
 			chi.NewRouter,
 			NewRouter,
 			controllers.NewHealth,
+			controllers.NewVehicle,
+			fx.Annotate(
+				vehiclerepo.NewRepository,
+				fx.As(new(repositories.VehicleRepository)),
+			),
 		),
 		fx.Invoke(registerHooks),
 	)
