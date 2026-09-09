@@ -1,19 +1,28 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import type { VehicleRepository } from "@/core/ports/vehicle-repository";
+import type { AlertRepository } from "@/core/ports/alert-repository";
 
-const RepositoryContext = createContext<VehicleRepository | null>(null);
+// Repositories holds all repository interfaces provided via React Context.
+interface Repositories {
+  vehicle: VehicleRepository;
+  alert: AlertRepository;
+}
 
-// RepositoryProvider injects a VehicleRepository implementation via React Context.
+const RepositoryContext = createContext<Repositories | null>(null);
+
+// RepositoryProvider injects VehicleRepository and AlertRepository via React Context.
 export function RepositoryProvider({
-  repository,
+  vehicleRepository,
+  alertRepository,
   children,
 }: {
-  repository: VehicleRepository;
+  vehicleRepository: VehicleRepository;
+  alertRepository: AlertRepository;
   children: ReactNode;
 }) {
   return (
-    <RepositoryContext.Provider value={repository}>
+    <RepositoryContext.Provider value={{ vehicle: vehicleRepository, alert: alertRepository }}>
       {children}
     </RepositoryContext.Provider>
   );
@@ -21,9 +30,18 @@ export function RepositoryProvider({
 
 // useVehicleRepository returns the injected VehicleRepository. Throws if no provider is present.
 export function useVehicleRepository(): VehicleRepository {
-  const repository = useContext(RepositoryContext);
-  if (repository === null) {
+  const repositories = useContext(RepositoryContext);
+  if (repositories === null) {
     throw new Error("useVehicleRepository must be used within a RepositoryProvider");
   }
-  return repository;
+  return repositories.vehicle;
+}
+
+// useAlertRepository returns the injected AlertRepository. Throws if no provider is present.
+export function useAlertRepository(): AlertRepository {
+  const repositories = useContext(RepositoryContext);
+  if (repositories === null) {
+    throw new Error("useAlertRepository must be used within a RepositoryProvider");
+  }
+  return repositories.alert;
 }
