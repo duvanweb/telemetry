@@ -1,20 +1,20 @@
 services:
+  # ─── Infrastructure ───
   postgres:
     image: postgres:16
     container_name: telemetry-postgres
     ports:
-      - "5432:5432"
+      - "5433:5432"
     environment:
-      POSTGRES_DB: geo_service
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     volumes:
-      - ./docker/init-alert-db.sh:/docker-entrypoint-initdb.d/init-alert-db.sh:ro
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d geo_service"]
+      test: ["CMD-SHELL", "psql -U postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='telemetry_vehicle'\" | grep -q 1"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
   redis:
     image: redis:7
@@ -41,3 +41,136 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # ─── Migrations (one-shot, run before app services) ───
+  migrate-vehicle:
+    image: migrate/migrate:v4.17.1
+    volumes:
+      - ./vehicle-service/db/migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres:5432/telemetry_vehicle?sslmode=disable", "up"]
+    restart: "no"
+
+  migrate-geo:
+    image: migrate/migrate:v4.17.1
+    volumes:
+      - ./geo-service/db/migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres:5432/geo_service?sslmode=disable", "up"]
+    restart: "no"
+
+  migrate-alert:
+    image: migrate/migrate:v4.17.1
+    volumes:
+      - ./alert-service/db/migrations:/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres:5432/telemetry_alert?sslmode=disable", "up"]
+    restart: "no"
+
+  # ─── Application services ───
+  vehicle-service:
+    build: ./vehicle-service
+    container_name: telemetry-vehicle-service
+    ports:
+      - "8090:8080"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: telemetry_vehicle
+      DB_SSLMODE: disable
+      HTTP_PORT: "8080"
+    depends_on:
+      migrate-vehicle:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  geo-service-api:
+    build: ./geo-service
+    container_name: telemetry-geo-api
+    command: ["/app/api"]
+    ports:
+      - "8081:8081"
+    environment:
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/geo_service?sslmode=disable
+      REDIS_ADDR: redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      VEHICLE_SERVICE_URL: http://vehicle-service:8080
+      HTTP_PORT: "8081"
+    depends_on:
+      migrate-geo:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      vehicle-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  geo-service-worker:
+    build: ./geo-service
+    container_name: telemetry-geo-worker
+    command: ["/app/worker"]
+    environment:
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/geo_service?sslmode=disable
+      REDIS_ADDR: redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      VEHICLE_SERVICE_URL: http://vehicle-service:8080
+    depends_on:
+      migrate-geo:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  alert-service:
+    build: ./alert-service
+    container_name: telemetry-alert-service
+    ports:
+      - "8092:8082"
+    environment:
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/telemetry_alert?sslmode=disable
+      REDIS_ADDR: redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      HTTP_PORT: "8082"
+    depends_on:
+      migrate-alert:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8082/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  telemetry-web:
+    build: ./telemetry-web
+    container_name: telemetry-web
+    ports:
+      - "8088:80"
+    depends_on:
+      vehicle-service:
+        condition: service_healthy
