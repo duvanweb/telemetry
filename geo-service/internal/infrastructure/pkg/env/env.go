@@ -15,6 +15,9 @@ type Configuration struct {
 	CacheTTL          string `env:"GPS_CACHE_TTL" envDefault:"60s"`
 	VehicleServiceURL string `env:"VEHICLE_SERVICE_URL" envDefault:"http://localhost:8080"`
 	RabbitMQURL       string `env:"RABBITMQ_URL" envDefault:"amqp://guest:guest@localhost:5672/"`
+	CBFailureThreshold int    `env:"CB_FAILURE_THRESHOLD" envDefault:"5"`
+	CBTimeout          string `env:"CB_TIMEOUT" envDefault:"30s"`
+	RetryQueueTTL      string `env:"RETRY_QUEUE_TTL" envDefault:"10s"`
 }
 
 // LoadEnv loads configuration from environment variables into a struct of type T.

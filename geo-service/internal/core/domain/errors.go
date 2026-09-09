@@ -7,4 +7,5 @@ var (
 	ErrVehicleServiceUnavailable = errors.New("vehicle service unavailable")
 	ErrDuplicatePosition         = errors.New("duplicate position")
 	ErrInvalidPosition           = errors.New("invalid position, lat or lng out of range")
+	ErrCircuitBreakerOpen        = errors.New("circuit breaker is open")
 )

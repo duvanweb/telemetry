@@ -13,6 +13,9 @@ import (
 // QueueName is the name of the RabbitMQ queue for GPS positions.
 const QueueName = "gps_positions"
 
+// RetryQueueName is the name of the retry queue for failed position persistence.
+const RetryQueueName = "gps_positions_retry"
+
 // ExchangeName is the name of the fanout exchange for GPS positions.
 const ExchangeName = "gps_positions_fanout"
 
@@ -44,10 +47,11 @@ func (c *Client) Close() error {
 	return c.connection.Close()
 }
 
-// DeclareTopology declares the fanout exchange, the gps_positions queue, and
-// binds the queue to the exchange. This ensures the topology exists before
-// publishing or consuming.
-func DeclareTopology(ch *amqp.Channel) error {
+// DeclareTopology declares the fanout exchange, the gps_positions queue with DLX
+// args, the gps_positions_retry queue with TTL and DLX args, and binds the
+// gps_positions queue to the exchange. retryQueueTTLMs is the TTL for the retry
+// queue in milliseconds.
+func DeclareTopology(ch *amqp.Channel, retryQueueTTLMs int) error {
 	if err := ch.ExchangeDeclare(
 		ExchangeName, // name
 		"fanout",     // kind
@@ -66,9 +70,27 @@ func DeclareTopology(ch *amqp.Channel) error {
 		false,     // autoDelete
 		false,     // exclusive
 		false,     // noWait
-		nil,       // args
+		amqp.Table{
+			"x-dead-letter-exchange":    "",
+			"x-dead-letter-routing-key": RetryQueueName,
+		},
 	); err != nil {
 		return fmt.Errorf("failed to declare queue: %w", err)
+	}
+
+	if _, err := ch.QueueDeclare(
+		RetryQueueName, // name
+		true,           // durable
+		false,          // autoDelete
+		false,          // exclusive
+		false,          // noWait
+		amqp.Table{
+			"x-message-ttl":             retryQueueTTLMs,
+			"x-dead-letter-exchange":    "",
+			"x-dead-letter-routing-key": QueueName,
+		},
+	); err != nil {
+		return fmt.Errorf("failed to declare retry queue: %w", err)
 	}
 
 	if err := ch.QueueBind(
