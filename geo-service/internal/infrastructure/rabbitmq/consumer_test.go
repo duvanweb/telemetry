@@ -11,6 +11,7 @@ import (
 	"github.com/telemetry-platform/geo-service/internal/core/domain"
 	svcmocks "github.com/telemetry-platform/geo-service/internal/core/ports/services/mocks"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/logger"
+	testdata "github.com/telemetry-platform/geo-service/test/data"
 )
 
 // mockDelivery is a test double for the Delivery interface.
@@ -30,60 +31,68 @@ func newTestConsumer(t *testing.T) (*Consumer, *svcmocks.PositionProcessor) {
 	return &Consumer{processor: proc, logger: logger.NewLogger()}, proc
 }
 
-func TestConsumer_ProcessMessage_Success(t *testing.T) {
-	c, proc := newTestConsumer(t)
-	delivery := &mockDelivery{}
+func TestConsumer_ProcessMessage(t *testing.T) {
+	t.Parallel()
 
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07}
-	body, err := json.Marshal(pos)
-	assert.NoError(t, err)
+	t.Run("works correctly", func(t *testing.T) {
+		t.Parallel()
+		c, proc := newTestConsumer(t)
+		delivery := &mockDelivery{}
 
-	proc.On("Process", mock.Anything, pos).Return(nil).Once()
+		pos := testdata.GetTestPosition()
+		body, err := json.Marshal(pos)
+		assert.NoError(t, err)
 
-	c.processMessage(context.Background(), body, delivery)
+		proc.On("Process", mock.Anything, pos).Return(nil).Once()
 
-	assert.True(t, delivery.acked)
-	assert.False(t, delivery.nacked)
-}
+		c.processMessage(context.Background(), body, delivery)
 
-func TestConsumer_ProcessMessage_ProcessError(t *testing.T) {
-	c, proc := newTestConsumer(t)
-	delivery := &mockDelivery{}
+		assert.True(t, delivery.acked)
+		assert.False(t, delivery.nacked)
+	})
 
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07}
-	body, err := json.Marshal(pos)
-	assert.NoError(t, err)
+	t.Run("fails when processor fails", func(t *testing.T) {
+		t.Parallel()
+		c, proc := newTestConsumer(t)
+		delivery := &mockDelivery{}
 
-	proc.On("Process", mock.Anything, pos).Return(errors.New("db error")).Once()
+		pos := testdata.GetTestPosition()
+		body, err := json.Marshal(pos)
+		assert.NoError(t, err)
 
-	c.processMessage(context.Background(), body, delivery)
+		proc.On("Process", mock.Anything, pos).Return(errors.New("db error")).Once()
 
-	assert.False(t, delivery.acked)
-	assert.True(t, delivery.nacked)
-}
+		c.processMessage(context.Background(), body, delivery)
 
-func TestConsumer_ProcessMessage_CircuitBreakerOpen(t *testing.T) {
-	c, proc := newTestConsumer(t)
-	delivery := &mockDelivery{}
+		assert.False(t, delivery.acked)
+		assert.True(t, delivery.nacked)
+	})
 
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07}
-	body, err := json.Marshal(pos)
-	assert.NoError(t, err)
+	t.Run("handles correctly when circuit breaker is open", func(t *testing.T) {
+		t.Parallel()
+		c, proc := newTestConsumer(t)
+		delivery := &mockDelivery{}
 
-	proc.On("Process", mock.Anything, pos).Return(domain.ErrCircuitBreakerOpen).Once()
+		pos := testdata.GetTestPosition()
+		body, err := json.Marshal(pos)
+		assert.NoError(t, err)
 
-	c.processMessage(context.Background(), body, delivery)
+		proc.On("Process", mock.Anything, pos).Return(domain.ErrCircuitBreakerOpen).Once()
 
-	assert.False(t, delivery.acked)
-	assert.True(t, delivery.nacked)
-}
+		c.processMessage(context.Background(), body, delivery)
 
-func TestConsumer_ProcessMessage_UnmarshalError(t *testing.T) {
-	c, _ := newTestConsumer(t)
-	delivery := &mockDelivery{}
+		assert.False(t, delivery.acked)
+		assert.True(t, delivery.nacked)
+	})
 
-	c.processMessage(context.Background(), []byte("invalid json"), delivery)
+	t.Run("fails when unmarshal fails", func(t *testing.T) {
+		t.Parallel()
+		c, _ := newTestConsumer(t)
+		delivery := &mockDelivery{}
 
-	assert.False(t, delivery.acked)
-	assert.True(t, delivery.nacked)
+		c.processMessage(context.Background(), []byte("invalid json"), delivery)
+
+		assert.False(t, delivery.acked)
+		assert.True(t, delivery.nacked)
+	})
 }

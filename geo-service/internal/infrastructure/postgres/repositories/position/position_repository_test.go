@@ -4,14 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/telemetry-platform/geo-service/internal/core/domain"
 	positionrepo "github.com/telemetry-platform/geo-service/internal/infrastructure/postgres/repositories/position"
+	testdata "github.com/telemetry-platform/geo-service/test/data"
 )
 
 // newMockDB creates a sqlmock DB with exact query matching for testing.
@@ -26,15 +25,16 @@ func newMockDB(t *testing.T) (*sql.DB, sqlmock.Sqlmock) {
 }
 
 func TestRepository_Save(t *testing.T) {
-	now := time.Now()
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07, RecordedAt: now}
+	t.Parallel()
 
 	t.Run("works correctly", func(t *testing.T) {
+		t.Parallel()
 		db, mock := newMockDB(t)
 		repo := positionrepo.NewRepository(db)
+		pos := testdata.GetTestPosition()
 
 		mock.ExpectExec(positionrepo.SavePositionQuery).
-			WithArgs(int64(1), 4.71, -74.07, now).
+			WithArgs(pos.VehicleID, pos.Latitude, pos.Longitude, pos.RecordedAt).
 			WillReturnResult(sqlmock.NewResult(1, 1))
 
 		err := repo.Save(context.Background(), pos)
@@ -43,11 +43,13 @@ func TestRepository_Save(t *testing.T) {
 	})
 
 	t.Run("fails when query fails", func(t *testing.T) {
+		t.Parallel()
 		db, mock := newMockDB(t)
 		repo := positionrepo.NewRepository(db)
+		pos := testdata.GetTestPosition()
 
 		mock.ExpectExec(positionrepo.SavePositionQuery).
-			WithArgs(int64(1), 4.71, -74.07, now).
+			WithArgs(pos.VehicleID, pos.Latitude, pos.Longitude, pos.RecordedAt).
 			WillReturnError(assert.AnError)
 
 		err := repo.Save(context.Background(), pos)

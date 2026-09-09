@@ -14,6 +14,7 @@ import (
 	repomocks "github.com/telemetry-platform/geo-service/internal/core/ports/repositories/mocks"
 	"github.com/telemetry-platform/geo-service/internal/core/processor"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/logger"
+	testdata "github.com/telemetry-platform/geo-service/test/data"
 )
 
 func newTestProcessor(t *testing.T, threshold uint32, timeout time.Duration) (*processor.Processor, *repomocks.PositionRepository) {
@@ -23,51 +24,56 @@ func newTestProcessor(t *testing.T, threshold uint32, timeout time.Duration) (*p
 	return proc, repo
 }
 
-func TestProcessor_Process_Success(t *testing.T) {
-	proc, repo := newTestProcessor(t, 5, 30*time.Second)
+func TestProcessor_Process(t *testing.T) {
+	t.Parallel()
 
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07}
-	repo.On("Save", mock.Anything, pos).Return(nil).Once()
+	t.Run("works correctly", func(t *testing.T) {
+		t.Parallel()
+		proc, repo := newTestProcessor(t, 5, 30*time.Second)
+		pos := testdata.GetTestPosition()
 
-	err := proc.Process(context.Background(), pos)
-	require.NoError(t, err)
-}
+		repo.On("Save", mock.Anything, pos).Return(nil).Once()
 
-func TestProcessor_Process_CircuitBreakerOpen(t *testing.T) {
-	proc, repo := newTestProcessor(t, 1, 30*time.Second)
+		err := proc.Process(context.Background(), pos)
+		require.NoError(t, err)
+	})
 
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07}
+	t.Run("handles correctly when circuit breaker is open", func(t *testing.T) {
+		t.Parallel()
+		proc, repo := newTestProcessor(t, 1, 30*time.Second)
+		pos := testdata.GetTestPosition()
 
-	// First call fails — CB opens (threshold=1).
-	repo.On("Save", mock.Anything, pos).Return(errors.New("db connection refused")).Once()
+		// First call fails — CB opens (threshold=1).
+		repo.On("Save", mock.Anything, pos).Return(errors.New("db connection refused")).Once()
 
-	err := proc.Process(context.Background(), pos)
-	require.Error(t, err)
-	assert.NotEqual(t, domain.ErrCircuitBreakerOpen, err)
-
-	// Second call — CB is open, repo.Save is NOT called.
-	err = proc.Process(context.Background(), pos)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrCircuitBreakerOpen)
-}
-
-func TestProcessor_Process_OpensAfterThreshold(t *testing.T) {
-	proc, repo := newTestProcessor(t, 5, 30*time.Second)
-
-	pos := domain.Position{VehicleID: 1, Latitude: 4.71, Longitude: -74.07}
-	dbErr := errors.New("db connection refused")
-
-	// 5 consecutive failures — CB should open after the 5th.
-	repo.On("Save", mock.Anything, pos).Return(dbErr).Times(5)
-
-	for i := 0; i < 5; i++ {
 		err := proc.Process(context.Background(), pos)
 		require.Error(t, err)
-		assert.NotErrorIs(t, err, domain.ErrCircuitBreakerOpen, "call %d should not be CB open", i+1)
-	}
+		assert.NotEqual(t, domain.ErrCircuitBreakerOpen, err)
 
-	// 6th call — CB is open, repo.Save is NOT called.
-	err := proc.Process(context.Background(), pos)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, domain.ErrCircuitBreakerOpen)
+		// Second call — CB is open, repo.Save is NOT called.
+		err = proc.Process(context.Background(), pos)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrCircuitBreakerOpen)
+	})
+
+	t.Run("handles correctly when opens after threshold", func(t *testing.T) {
+		t.Parallel()
+		proc, repo := newTestProcessor(t, 5, 30*time.Second)
+		pos := testdata.GetTestPosition()
+		dbErr := errors.New("db connection refused")
+
+		// 5 consecutive failures — CB should open after the 5th.
+		repo.On("Save", mock.Anything, pos).Return(dbErr).Times(5)
+
+		for i := 0; i < 5; i++ {
+			err := proc.Process(context.Background(), pos)
+			require.Error(t, err)
+			assert.NotErrorIs(t, err, domain.ErrCircuitBreakerOpen, "call %d should not be CB open", i+1)
+		}
+
+		// 6th call — CB is open, repo.Save is NOT called.
+		err := proc.Process(context.Background(), pos)
+		require.Error(t, err)
+		assert.ErrorIs(t, err, domain.ErrCircuitBreakerOpen)
+	})
 }
