@@ -38,6 +38,7 @@ func (r *Router) start(basePath string) http.Handler {
 	r.server.Get("/health", r.controllers.Health.GetHealth)
 
 	r.server.Route(basePath, func(route chi.Router) {
+		route.Get("/alerts", r.controllers.Alert.List)
 		route.Get("/alerts/stream", r.controllers.Alert.Stream)
 	})
 

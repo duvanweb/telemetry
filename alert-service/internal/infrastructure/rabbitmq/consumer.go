@@ -8,6 +8,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 
 	"github.com/telemetry-platform/alert-service/internal/core/domain"
+	"github.com/telemetry-platform/alert-service/internal/core/ports/resources"
 	"github.com/telemetry-platform/alert-service/internal/core/ports/services"
 	"github.com/telemetry-platform/alert-service/internal/infrastructure/pkg/logger"
 )
@@ -17,9 +18,10 @@ var json = jsoniter.ConfigCompatibleWithStandardLibrary
 // Consumer consumes GPS positions from the alert_positions queue and
 // delegates processing to the AlertProcessor.
 type Consumer struct {
-	channel   *amqp.Channel
-	processor services.AlertProcessor
-	logger    logger.Logger
+	channel            *amqp.Channel
+	processor          services.AlertProcessor
+	positionBroadcaster resources.PositionBroadcaster
+	logger             logger.Logger
 }
 
 // Delivery is the interface for an AMQP delivery that can be acknowledged.
@@ -60,13 +62,18 @@ func (c *Consumer) Stop() error {
 	return c.channel.Close()
 }
 
-// processMessage deserializes a position, processes it, and acks/nacks the message.
+// processMessage deserializes a position, broadcasts it via PositionBroadcaster,
+// processes it, and acks/nacks the message.
 func (c *Consumer) processMessage(ctx context.Context, body []byte, delivery Delivery) {
 	var pos domain.Position
 	if err := json.Unmarshal(body, &pos); err != nil {
 		c.logger.Errorw(ctx, "failed to unmarshal position", "error", err)
 		_ = delivery.Nack(false, false)
 		return
+	}
+
+	if err := c.positionBroadcaster.Broadcast(ctx, pos); err != nil {
+		c.logger.Warnw(ctx, "failed to broadcast position", "error", err)
 	}
 
 	if err := c.processor.Process(ctx, pos); err != nil {
@@ -83,7 +90,7 @@ func (c *Consumer) processMessage(ctx context.Context, body []byte, delivery Del
 // NewConsumer creates and returns a new Consumer with its own RabbitMQ channel.
 // It declares the fanout exchange, the alert_positions queue, and binds the queue
 // to the exchange.
-func NewConsumer(client *Client, processor services.AlertProcessor, log logger.Logger) (*Consumer, error) {
+func NewConsumer(client *Client, processor services.AlertProcessor, posBroadcaster resources.PositionBroadcaster, log logger.Logger) (*Consumer, error) {
 	ch, err := client.Channel()
 	if err != nil {
 		return nil, fmt.Errorf("failed to open consumer channel: %w", err)
@@ -125,5 +132,5 @@ func NewConsumer(client *Client, processor services.AlertProcessor, log logger.L
 		return nil, fmt.Errorf("failed to bind queue to exchange: %w", err)
 	}
 
-	return &Consumer{channel: ch, processor: processor, logger: log}, nil
+	return &Consumer{channel: ch, processor: processor, positionBroadcaster: posBroadcaster, logger: log}, nil
 }
