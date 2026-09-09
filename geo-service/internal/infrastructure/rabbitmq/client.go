@@ -13,6 +13,9 @@ import (
 // QueueName is the name of the RabbitMQ queue for GPS positions.
 const QueueName = "gps_positions"
 
+// ExchangeName is the name of the fanout exchange for GPS positions.
+const ExchangeName = "gps_positions_fanout"
+
 // Client holds the RabbitMQ connection.
 type Client struct {
 	connection *amqp.Connection
@@ -39,4 +42,44 @@ func (c *Client) Channel() (*amqp.Channel, error) {
 // Close closes the RabbitMQ connection.
 func (c *Client) Close() error {
 	return c.connection.Close()
+}
+
+// DeclareTopology declares the fanout exchange, the gps_positions queue, and
+// binds the queue to the exchange. This ensures the topology exists before
+// publishing or consuming.
+func DeclareTopology(ch *amqp.Channel) error {
+	if err := ch.ExchangeDeclare(
+		ExchangeName, // name
+		"fanout",     // kind
+		true,         // durable
+		false,        // autoDelete
+		false,        // internal
+		false,        // noWait
+		nil,          // args
+	); err != nil {
+		return fmt.Errorf("failed to declare exchange: %w", err)
+	}
+
+	if _, err := ch.QueueDeclare(
+		QueueName, // name
+		true,      // durable
+		false,     // autoDelete
+		false,     // exclusive
+		false,     // noWait
+		nil,       // args
+	); err != nil {
+		return fmt.Errorf("failed to declare queue: %w", err)
+	}
+
+	if err := ch.QueueBind(
+		QueueName,    // queue
+		"",           // routing key (ignored by fanout)
+		ExchangeName, // exchange
+		false,        // noWait
+		nil,          // args
+	); err != nil {
+		return fmt.Errorf("failed to bind queue to exchange: %w", err)
+	}
+
+	return nil
 }

@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: geo_service
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+    volumes:
+      - ./docker/init-alert-db.sh:/docker-entrypoint-initdb.d/init-alert-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d geo_service"]
       interval: 5s

@@ -76,9 +76,9 @@ func NewConsumer(client *Client, repo repositories.PositionRepository, log logge
 		return nil, fmt.Errorf("failed to open consumer channel: %w", err)
 	}
 
-	if _, err := ch.QueueDeclare(QueueName, true, false, false, false, nil); err != nil {
+	if err := DeclareTopology(ch); err != nil {
 		_ = ch.Close()
-		return nil, fmt.Errorf("failed to declare queue: %w", err)
+		return nil, fmt.Errorf("failed to declare topology: %w", err)
 	}
 
 	return &Consumer{channel: ch, repo: repo, logger: log}, nil

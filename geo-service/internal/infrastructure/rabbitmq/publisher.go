@@ -30,10 +30,10 @@ func (p *Publisher) Publish(ctx context.Context, pos domain.Position) error {
 
 	err = p.channel.PublishWithContext(
 		ctx,
-		"",        // exchange
-		QueueName, // routing key
-		false,     // mandatory
-		false,     // immediate
+		ExchangeName, // exchange
+		"",           // routing key (ignored by fanout)
+		false,        // mandatory
+		false,        // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        body,
@@ -53,9 +53,9 @@ func NewPublisher(client *Client) (*Publisher, error) {
 		return nil, fmt.Errorf("failed to open publisher channel: %w", err)
 	}
 
-	if _, err := ch.QueueDeclare(QueueName, true, false, false, false, nil); err != nil {
+	if err := DeclareTopology(ch); err != nil {
 		_ = ch.Close()
-		return nil, fmt.Errorf("failed to declare queue: %w", err)
+		return nil, fmt.Errorf("failed to declare topology: %w", err)
 	}
 
 	return &Publisher{channel: ch}, nil
