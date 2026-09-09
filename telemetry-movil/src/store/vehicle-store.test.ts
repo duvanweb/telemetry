@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import type { Vehicle } from '@/api/types';
