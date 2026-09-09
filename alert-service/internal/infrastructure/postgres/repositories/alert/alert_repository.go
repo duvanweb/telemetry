@@ -16,6 +16,35 @@ type Repository struct {
 	db repositories.Databaser
 }
 
+// List returns a page of alerts ordered by detected_at descending and the total count.
+func (r *Repository) List(ctx context.Context, limit, offset int) ([]domain.Alert, int64, error) {
+	rows, err := r.db.QueryContext(ctx, ListAlertsQuery, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list alerts: %w", err)
+	}
+	defer rows.Close()
+
+	var alerts []domain.Alert
+	for rows.Next() {
+		var alert domain.Alert
+		if err := rows.Scan(&alert.ID, &alert.VehicleID, &alert.Type, &alert.Latitude, &alert.Longitude, &alert.DetectedAt, &alert.CreatedAt); err != nil {
+			return nil, 0, fmt.Errorf("failed to scan alert: %w", err)
+		}
+		alerts = append(alerts, alert)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("failed to iterate alert rows: %w", err)
+	}
+
+	var total int64
+	if err := r.db.QueryRowContext(ctx, CountAlertsQuery).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count alerts: %w", err)
+	}
+
+	return alerts, total, nil
+}
+
 // NewRepository creates and returns a new alert Repository.
 func NewRepository(db repositories.Databaser) *Repository {
 	return &Repository{db: db}
