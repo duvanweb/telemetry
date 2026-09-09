@@ -2,7 +2,6 @@ package position
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/telemetry-platform/geo-service/internal/core/domain"
@@ -14,11 +13,11 @@ var _ repositories.PositionRepository = (*Repository)(nil)
 
 // Repository implements repositories.PositionRepository with PostgreSQL.
 type Repository struct {
-	db *sql.DB
+	db repositories.Databaser
 }
 
 // NewRepository creates and returns a new position Repository.
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db repositories.Databaser) *Repository {
 	return &Repository{db: db}
 }
 

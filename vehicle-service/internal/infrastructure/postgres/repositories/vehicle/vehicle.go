@@ -17,11 +17,11 @@ var _ repositories.VehicleRepository = (*Repository)(nil)
 
 // Repository implements repositories.VehicleRepository with PostgreSQL.
 type Repository struct {
-	db *sql.DB
+	db repositories.Databaser
 }
 
 // NewRepository creates and returns a new vehicle Repository.
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db repositories.Databaser) *Repository {
 	return &Repository{db: db}
 }
 

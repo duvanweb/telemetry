@@ -40,12 +40,14 @@ func TestRepository_Save(t *testing.T) {
 		db, mock := newMockDB(t)
 		repo := alertrepo.NewRepository(db)
 
-		mock.ExpectExec(alertrepo.SaveAlertQuery).
+		mock.ExpectQuery(alertrepo.SaveAlertQuery).
 			WithArgs(int64(1), domain.AlertTypeVehicleStopped, 4.71, -74.07, now).
-			WillReturnResult(sqlmock.NewResult(1, 1))
+			WillReturnRows(sqlmock.NewRows([]string{"id", "created_at"}).AddRow(int64(1), now))
 
-		err := repo.Save(context.Background(), alert)
+		err := repo.Save(context.Background(), &alert)
 		assert.NoError(t, err)
+		assert.Equal(t, int64(1), alert.ID)
+		assert.Equal(t, now, alert.CreatedAt)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
@@ -54,11 +56,11 @@ func TestRepository_Save(t *testing.T) {
 		db, mock := newMockDB(t)
 		repo := alertrepo.NewRepository(db)
 
-		mock.ExpectExec(alertrepo.SaveAlertQuery).
+		mock.ExpectQuery(alertrepo.SaveAlertQuery).
 			WithArgs(int64(1), domain.AlertTypeVehicleStopped, 4.71, -74.07, now).
 			WillReturnError(assert.AnError)
 
-		err := repo.Save(context.Background(), alert)
+		err := repo.Save(context.Background(), &alert)
 		assert.Error(t, err)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})

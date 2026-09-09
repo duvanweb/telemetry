@@ -35,31 +35,43 @@ func (s *Service) Create(ctx context.Context, v *domain.Vehicle) error {
 
 	existing, err := s.repo.FindByPlate(ctx, v.Plate)
 	if err != nil && !errors.Is(err, domain.ErrVehicleNotFound) {
+		s.logger.Errorw(ctx, "failed to check existing vehicle by plate", "plate", v.Plate, "error", err)
 		return err
 	}
 	if existing != nil {
 		return domain.ErrVehicleAlreadyExists
 	}
 
-	return s.repo.Create(ctx, v)
-}
+	if err := s.repo.Create(ctx, v); err != nil {
+		s.logger.Errorw(ctx, "failed to create vehicle", "plate", v.Plate, "error", err)
+		return err
+	}
 
-// SoftDelete marks a vehicle as deleted by setting deleted_at.
-// Returns ErrVehicleNotFound if the vehicle does not exist or is already soft-deleted.
-func (s *Service) SoftDelete(ctx context.Context, id int64) error {
-	return s.repo.SoftDelete(ctx, id)
-}
-
-// GetByID retrieves an active vehicle by its ID.
-// Returns ErrVehicleNotFound if the vehicle does not exist or is soft-deleted.
-func (s *Service) GetByID(ctx context.Context, id int64) (*domain.Vehicle, error) {
-	return s.repo.GetByID(ctx, id)
+	return nil
 }
 
 // FindByPlate retrieves an active vehicle by its plate.
 // Returns ErrVehicleNotFound if the vehicle does not exist or is soft-deleted.
 func (s *Service) FindByPlate(ctx context.Context, plate string) (*domain.Vehicle, error) {
-	return s.repo.FindByPlate(ctx, plate)
+	v, err := s.repo.FindByPlate(ctx, plate)
+	if err != nil {
+		s.logger.Errorw(ctx, "failed to find vehicle by plate", "plate", plate, "error", err)
+		return nil, err
+	}
+
+	return v, nil
+}
+
+// GetByID retrieves an active vehicle by its ID.
+// Returns ErrVehicleNotFound if the vehicle does not exist or is soft-deleted.
+func (s *Service) GetByID(ctx context.Context, id int64) (*domain.Vehicle, error) {
+	v, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		s.logger.Errorw(ctx, "failed to get vehicle by id", "id", id, "error", err)
+		return nil, err
+	}
+
+	return v, nil
 }
 
 // List retrieves a paginated list of active vehicles.
@@ -75,10 +87,27 @@ func (s *Service) List(ctx context.Context, limit, offset int) ([]domain.Vehicle
 		offset = defaultOffset
 	}
 
-	return s.repo.List(ctx, limit, offset)
+	vehicles, total, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		s.logger.Errorw(ctx, "failed to list vehicles", "limit", limit, "offset", offset, "error", err)
+		return nil, 0, err
+	}
+
+	return vehicles, total, nil
 }
 
 // NewService creates and returns a new vehicle Service.
 func NewService(repo repositories.VehicleRepository, log logger.Logger) *Service {
 	return &Service{repo: repo, logger: log}
+}
+
+// SoftDelete marks a vehicle as deleted by setting deleted_at.
+// Returns ErrVehicleNotFound if the vehicle does not exist or is already soft-deleted.
+func (s *Service) SoftDelete(ctx context.Context, id int64) error {
+	if err := s.repo.SoftDelete(ctx, id); err != nil {
+		s.logger.Errorw(ctx, "failed to soft delete vehicle", "id", id, "error", err)
+		return err
+	}
+
+	return nil
 }

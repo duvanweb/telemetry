@@ -10,5 +10,5 @@ import (
 //
 //go:generate mockery --name AlertRepository --dir=. --output=./mocks
 type AlertRepository interface {
-	Save(ctx context.Context, alert domain.Alert) error
+	Save(ctx context.Context, alert *domain.Alert) error
 }

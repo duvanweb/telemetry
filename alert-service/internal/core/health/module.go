@@ -7,7 +7,8 @@ import (
 )
 
 // Module wires the health domain into FX.
-var Module = fx.Options(
+var Module = fx.Module(
+	"health",
 	fx.Provide(
 		fx.Annotate(NewService, fx.As(new(services.HealthService))),
 	),

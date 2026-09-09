@@ -17,12 +17,18 @@ type Alert struct {
 	logger      logger.Logger
 }
 
+// NewAlert creates and returns a new Alert controller.
+func NewAlert(log logger.Logger, broadcaster resources.AlertBroadcaster) *Alert {
+	return &Alert{broadcaster: broadcaster, logger: log}
+}
+
+// Stream handles GET /alerts/stream and sends alert events via SSE.
+//
 // @Router /alerts/stream [get]
 // @Tags alerts
 // @Summary Stream alerts via Server-Sent Events.
 // @Description Returns a text/event-stream with real-time alert notifications.
 // @Success 200 {string} string "Event stream."
-// Stream handles GET /alerts/stream and sends alert events via SSE.
 func (c *Alert) Stream(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -77,9 +83,4 @@ func (c *Alert) writeSSEEvent(ctx context.Context, w http.ResponseWriter, flushe
 	}
 
 	flusher.Flush()
-}
-
-// NewAlert creates and returns a new Alert controller.
-func NewAlert(log logger.Logger, broadcaster resources.AlertBroadcaster) *Alert {
-	return &Alert{broadcaster: broadcaster, logger: log}
 }

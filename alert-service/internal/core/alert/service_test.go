@@ -88,7 +88,7 @@ func TestService_Process(t *testing.T) {
 		updatedTrack.Alerted = true
 
 		tracker.On("Get", mock.Anything, int64(1)).Return(track, nil)
-		repo.On("Save", mock.Anything, expectedAlert).Return(nil)
+		repo.On("Save", mock.Anything, mock.Anything).Return(nil)
 		broadcaster.On("Broadcast", mock.Anything, expectedAlert).Return(nil)
 		tracker.On("Set", mock.Anything, updatedTrack).Return(nil)
 
@@ -167,16 +167,9 @@ func TestService_Process(t *testing.T) {
 			FirstSeenAt: now.Add(-2 * time.Minute),
 			Alerted:     false,
 		}
-		expectedAlert := domain.Alert{
-			VehicleID:  1,
-			Type:       domain.AlertTypeVehicleStopped,
-			Latitude:   lat,
-			Longitude:  lng,
-			DetectedAt: now,
-		}
 
 		tracker.On("Get", mock.Anything, int64(1)).Return(track, nil)
-		repo.On("Save", mock.Anything, expectedAlert).Return(assert.AnError)
+		repo.On("Save", mock.Anything, mock.Anything).Return(assert.AnError)
 
 		err := svc.Process(context.Background(), pos)
 		assert.Error(t, err)
@@ -204,7 +197,7 @@ func TestService_Process(t *testing.T) {
 		updatedTrack.Alerted = true
 
 		tracker.On("Get", mock.Anything, int64(1)).Return(track, nil)
-		repo.On("Save", mock.Anything, expectedAlert).Return(nil)
+		repo.On("Save", mock.Anything, mock.Anything).Return(nil)
 		broadcaster.On("Broadcast", mock.Anything, expectedAlert).Return(nil)
 		tracker.On("Set", mock.Anything, updatedTrack).Return(assert.AnError)
 

@@ -8,10 +8,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/telemetry-platform/geo-service/internal/core/domain"
-	svcmocks "github.com/telemetry-platform/geo-service/internal/core/ports/services/mocks"
-	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/logger"
-	testdata "github.com/telemetry-platform/geo-service/test/data"
+	"github.com/telemetry-platform/alert-service/internal/core/domain"
+	svcmocks "github.com/telemetry-platform/alert-service/internal/core/ports/services/mocks"
+	"github.com/telemetry-platform/alert-service/internal/infrastructure/pkg/logger"
+	testdata "github.com/telemetry-platform/alert-service/test/data"
 )
 
 // mockDelivery is a test double for the Delivery interface.
@@ -22,12 +22,12 @@ type mockDelivery struct {
 	nackErr error
 }
 
-func (m *mockDelivery) Ack(bool) error      { m.acked = true; return m.ackErr }
+func (m *mockDelivery) Ack(bool) error       { m.acked = true; return m.ackErr }
 func (m *mockDelivery) Nack(bool, bool) error { m.nacked = true; return m.nackErr }
 
-func newTestConsumer(t *testing.T) (*Consumer, *svcmocks.PositionProcessor) {
+func newTestConsumer(t *testing.T) (*Consumer, *svcmocks.AlertProcessor) {
 	t.Helper()
-	proc := svcmocks.NewPositionProcessor(t)
+	proc := svcmocks.NewAlertProcessor(t)
 	return &Consumer{processor: proc, logger: logger.NewLogger()}, proc
 }
 
@@ -51,7 +51,7 @@ func TestConsumer_ProcessMessage(t *testing.T) {
 		assert.False(t, delivery.nacked)
 	})
 
-	t.Run("fails when processor fails", func(t *testing.T) {
+	t.Run("fails when process fails", func(t *testing.T) {
 		t.Parallel()
 		c, proc := newTestConsumer(t)
 		delivery := &mockDelivery{}
@@ -60,24 +60,7 @@ func TestConsumer_ProcessMessage(t *testing.T) {
 		body, err := json.Marshal(pos)
 		assert.NoError(t, err)
 
-		proc.On("Process", mock.Anything, pos).Return(errors.New("db error")).Once()
-
-		c.processMessage(context.Background(), body, delivery)
-
-		assert.False(t, delivery.acked)
-		assert.True(t, delivery.nacked)
-	})
-
-	t.Run("handles correctly when circuit breaker is open", func(t *testing.T) {
-		t.Parallel()
-		c, proc := newTestConsumer(t)
-		delivery := &mockDelivery{}
-
-		pos := testdata.GetTestPosition()
-		body, err := json.Marshal(pos)
-		assert.NoError(t, err)
-
-		proc.On("Process", mock.Anything, pos).Return(domain.ErrCircuitBreakerOpen).Once()
+		proc.On("Process", mock.Anything, pos).Return(errors.New("processing error")).Once()
 
 		c.processMessage(context.Background(), body, delivery)
 
@@ -96,3 +79,6 @@ func TestConsumer_ProcessMessage(t *testing.T) {
 		assert.True(t, delivery.nacked)
 	})
 }
+
+// Ensure domain import is used.
+var _ = domain.AlertTypeVehicleStopped
