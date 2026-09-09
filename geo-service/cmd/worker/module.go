@@ -6,6 +6,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/telemetry-platform/geo-service/internal/core/ports/repositories"
+	"github.com/telemetry-platform/geo-service/internal/core/processor"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/env"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/pkg/logger"
 	"github.com/telemetry-platform/geo-service/internal/infrastructure/postgres"
@@ -20,6 +21,7 @@ func Module() fx.Option {
 		env.Module(),
 		postgres.Module(),
 		rabbitmq.Module(),
+		processor.Module(),
 		fx.Provide(
 			fx.Annotate(positionrepo.NewRepository, fx.As(new(repositories.PositionRepository))),
 		),
