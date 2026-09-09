@@ -14,6 +14,43 @@ type AlertRepository struct {
 	mock.Mock
 }
 
+// List provides a mock function with given fields: ctx, limit, offset
+func (_m *AlertRepository) List(ctx context.Context, limit int, offset int) ([]domain.Alert, int64, error) {
+	ret := _m.Called(ctx, limit, offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for List")
+	}
+
+	var r0 []domain.Alert
+	var r1 int64
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) ([]domain.Alert, int64, error)); ok {
+		return rf(ctx, limit, offset)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int, int) []domain.Alert); ok {
+		r0 = rf(ctx, limit, offset)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]domain.Alert)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int, int) int64); ok {
+		r1 = rf(ctx, limit, offset)
+	} else {
+		r1 = ret.Get(1).(int64)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, int, int) error); ok {
+		r2 = rf(ctx, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
 // Save provides a mock function with given fields: ctx, alert
 func (_m *AlertRepository) Save(ctx context.Context, alert *domain.Alert) error {
 	ret := _m.Called(ctx, alert)

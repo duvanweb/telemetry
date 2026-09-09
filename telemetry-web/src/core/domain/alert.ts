@@ -1,8 +1,10 @@
-// Alert entity — used by the alerts mockup section. Not wired to a backend service yet.
+// Alert entity — represents an alert from alert-service.
 export interface Alert {
   id: number;
-  type: string; // e.g. "SPEED", "GEOFENCE"
-  vehiclePlate: string;
-  message: string;
-  timestamp: string; // ISO 8601
+  vehicleId: number;
+  type: string;
+  latitude: number;
+  longitude: number;
+  detectedAt: string; // ISO 8601
+  createdAt: string;  // ISO 8601
 }

@@ -1,6 +1,10 @@
-import type { Alert } from "@/core/domain/alert";
+import type { ReactNode } from "react";
+import { useAlerts } from "@/application/alerts/use-alerts";
+import { ApiError } from "@/infrastructure/http/errors";
 import { SectionCard } from "@/presentation/components/section-card";
+import { ErrorState } from "@/presentation/components/error-state";
 import { Badge } from "@/presentation/ui/badge";
+import { Skeleton } from "@/presentation/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -10,72 +14,79 @@ import {
   TableRow,
 } from "@/presentation/ui/table";
 
-// Static example alerts for the mockup. Not wired to alert-service.
-const alerts: Alert[] = [
-  {
-    id: 1,
-    type: "SPEED",
-    vehiclePlate: "ABC-123",
-    message: "Speed limit exceeded (80 km/h)",
-    timestamp: "2026-09-08T10:30:00Z",
-  },
-  {
-    id: 2,
-    type: "GEOFENCE",
-    vehiclePlate: "DEF-456",
-    message: "Exited geofence 'Zone A'",
-    timestamp: "2026-09-08T11:15:00Z",
-  },
-  {
-    id: 3,
-    type: "SPEED",
-    vehiclePlate: "GHI-789",
-    message: "Speed limit exceeded (60 km/h)",
-    timestamp: "2026-09-08T12:00:00Z",
-  },
-  {
-    id: 4,
-    type: "GEOFENCE",
-    vehiclePlate: "ABC-123",
-    message: "Entered geofence 'Zone B'",
-    timestamp: "2026-09-08T12:45:00Z",
-  },
-];
+function AlertsSkeleton() {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
+}
+
+function networkMessage(error: unknown): string {
+  if (error instanceof ApiError && error.status === 0) return "Network error, try again";
+  if (error instanceof ApiError) return error.message;
+  return "Something went wrong";
+}
 
 function formatTimestamp(iso: string): string {
   return new Date(iso).toLocaleString();
 }
 
-// AlertsSection — mockup table of alerts with static example data and a "Demo" badge.
+// AlertsSection — functional table of alerts from alert-service.
 export function AlertsSection() {
-  return (
-    <SectionCard title="Alerts" demo>
+  const query = useAlerts({ limit: 20, offset: 0 });
+
+  let content: ReactNode;
+
+  if (query.isLoading) {
+    content = <AlertsSkeleton />;
+  } else if (query.isError) {
+    content = (
+      <ErrorState
+        message={networkMessage(query.error)}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  } else if (!query.data || query.data.data.length === 0) {
+    content = <p className="text-sm text-muted-foreground">No alerts found</p>;
+  } else {
+    content = (
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>ID</TableHead>
+            <TableHead>Vehicle ID</TableHead>
             <TableHead>Type</TableHead>
-            <TableHead>Vehicle</TableHead>
-            <TableHead>Message</TableHead>
-            <TableHead>Timestamp</TableHead>
+            <TableHead>Latitude</TableHead>
+            <TableHead>Longitude</TableHead>
+            <TableHead>Detected At</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {alerts.map((alert) => (
+          {query.data.data.map((alert) => (
             <TableRow key={alert.id}>
               <TableCell>{alert.id}</TableCell>
+              <TableCell className="font-medium">{alert.vehicleId}</TableCell>
               <TableCell>
-                <Badge variant={alert.type === "SPEED" ? "destructive" : "secondary"}>
+                <Badge variant={alert.type === "VEHICLE_STOPPED" ? "destructive" : "secondary"}>
                   {alert.type}
                 </Badge>
               </TableCell>
-              <TableCell className="font-medium">{alert.vehiclePlate}</TableCell>
-              <TableCell>{alert.message}</TableCell>
-              <TableCell>{formatTimestamp(alert.timestamp)}</TableCell>
+              <TableCell>{alert.latitude.toFixed(4)}</TableCell>
+              <TableCell>{alert.longitude.toFixed(4)}</TableCell>
+              <TableCell>{formatTimestamp(alert.detectedAt)}</TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+    );
+  }
+
+  return (
+    <SectionCard title="Alerts">
+      {content}
     </SectionCard>
   );
 }

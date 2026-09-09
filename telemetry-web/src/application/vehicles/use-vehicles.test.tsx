@@ -3,6 +3,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { VehicleRepository } from "@/core/ports/vehicle-repository";
+import type { AlertRepository } from "@/core/ports/alert-repository";
 import { RepositoryProvider } from "@/app/repository-context";
 import { useVehicles } from "@/application/vehicles/use-vehicles";
 import { useVehicleByPlate } from "@/application/vehicles/use-vehicle-by-plate";
@@ -14,6 +15,10 @@ const VEHICLE = {
   updatedAt: "2026-09-08T10:00:00Z",
 };
 
+const mockAlertRepo: AlertRepository = {
+  list: vi.fn(),
+};
+
 function createWrapper(repository: VehicleRepository) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -21,7 +26,7 @@ function createWrapper(repository: VehicleRepository) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <RepositoryProvider repository={repository}>
+        <RepositoryProvider vehicleRepository={repository} alertRepository={mockAlertRepo}>
           {children}
         </RepositoryProvider>
       </QueryClientProvider>
