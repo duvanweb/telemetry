@@ -11,17 +11,18 @@ export class HttpVehicleRepository implements VehicleRepository {
     this.http = http;
   }
 
-  async list(params: { limit: number; offset: number }): Promise<ListVehiclesResult> {
+  async list(params: { limit: number; offset: number; signal?: AbortSignal }): Promise<ListVehiclesResult> {
     const query = new URLSearchParams({
       limit: String(params.limit),
       offset: String(params.offset),
     });
-    return this.http.get<ListVehiclesResult>(`/api/vehicles?${query.toString()}`);
+    return this.http.get<ListVehiclesResult>(`/api/vehicles?${query.toString()}`, params.signal);
   }
 
-  async findByPlate(plate: string): Promise<Vehicle> {
+  async findByPlate(plate: string, signal?: AbortSignal): Promise<Vehicle> {
     return this.http.get<Vehicle>(
       `/api/vehicles/plates/${encodeURIComponent(plate)}`,
+      signal,
     );
   }
 }
