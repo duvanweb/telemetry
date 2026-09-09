@@ -22,7 +22,7 @@ func (r *Repository) List(ctx context.Context, limit, offset int) ([]domain.Aler
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to list alerts: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var alerts []domain.Alert
 	for rows.Next() {

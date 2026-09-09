@@ -3,7 +3,6 @@ import { AlertsSection } from "@/presentation/sections/alerts-section";
 import { MapSection } from "@/presentation/sections/map-section";
 import { useVehicles } from "@/application/vehicles/use-vehicles";
 import { useAlertStream } from "@/application/alerts/use-alert-stream";
-import { VEHICLES_PAGE_SIZE } from "@/infrastructure/config/env";
 
 // Dashboard — single page with three stacked sections.
 export function Dashboard() {
