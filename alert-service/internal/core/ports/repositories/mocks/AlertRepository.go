@@ -15,7 +15,7 @@ type AlertRepository struct {
 }
 
 // Save provides a mock function with given fields: ctx, alert
-func (_m *AlertRepository) Save(ctx context.Context, alert domain.Alert) error {
+func (_m *AlertRepository) Save(ctx context.Context, alert *domain.Alert) error {
 	ret := _m.Called(ctx, alert)
 
 	if len(ret) == 0 {
@@ -23,7 +23,7 @@ func (_m *AlertRepository) Save(ctx context.Context, alert domain.Alert) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, domain.Alert) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *domain.Alert) error); ok {
 		r0 = rf(ctx, alert)
 	} else {
 		r0 = ret.Error(0)

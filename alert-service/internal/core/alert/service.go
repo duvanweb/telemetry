@@ -15,11 +15,11 @@ import (
 
 // Service implements the alert anomaly detection business logic.
 type Service struct {
-	repo            repositories.AlertRepository
-	tracker         resources.PositionTracker
-	broadcaster     resources.AlertBroadcaster
+	repo             repositories.AlertRepository
+	tracker          resources.PositionTracker
+	broadcaster      resources.AlertBroadcaster
 	stoppedThreshold time.Duration
-	logger          logger.Logger
+	logger           logger.Logger
 }
 
 // NewService creates and returns a new alert Service.
@@ -65,8 +65,8 @@ func (s *Service) Process(ctx context.Context, pos domain.Position) error {
 	return s.handleMovedPosition(ctx, pos)
 }
 
-// handleNewTrack creates and stores a new vehicle track for the first seen position.
-func (s *Service) handleNewTrack(ctx context.Context, pos domain.Position) error {
+// handleMovedPosition resets the vehicle track when the vehicle moves to a new position.
+func (s *Service) handleMovedPosition(ctx context.Context, pos domain.Position) error {
 	newTrack := domain.VehicleTrack{
 		VehicleID:   pos.VehicleID,
 		Latitude:    pos.Latitude,
@@ -83,8 +83,8 @@ func (s *Service) handleNewTrack(ctx context.Context, pos domain.Position) error
 	return nil
 }
 
-// handleMovedPosition resets the vehicle track when the vehicle moves to a new position.
-func (s *Service) handleMovedPosition(ctx context.Context, pos domain.Position) error {
+// handleNewTrack creates and stores a new vehicle track for the first seen position.
+func (s *Service) handleNewTrack(ctx context.Context, pos domain.Position) error {
 	newTrack := domain.VehicleTrack{
 		VehicleID:   pos.VehicleID,
 		Latitude:    pos.Latitude,
@@ -119,7 +119,7 @@ func (s *Service) handleSamePosition(ctx context.Context, pos domain.Position, t
 		DetectedAt: pos.RecordedAt,
 	}
 
-	if err := s.repo.Save(ctx, alert); err != nil {
+	if err := s.repo.Save(ctx, &alert); err != nil {
 		s.logger.Errorw(ctx, "failed to save alert", "vehicle_id", pos.VehicleID, "error", err)
 		return fmt.Errorf("failed to save alert: %w", err)
 	}

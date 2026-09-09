@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
 
 	"go.uber.org/fx"
 
@@ -16,7 +15,7 @@ func Module() fx.Option {
 	return fx.Module(
 		"postgres",
 		fx.Provide(
-			NewDB,
+			fx.Annotate(NewConnection, fx.As(new(repositories.Databaser))),
 			fx.Annotate(alert.NewRepository, fx.As(new(repositories.AlertRepository))),
 		),
 		fx.Invoke(registerDBHooks),
@@ -24,7 +23,7 @@ func Module() fx.Option {
 }
 
 // registerDBHooks registers the database close hook on the FX lifecycle.
-func registerDBHooks(lc fx.Lifecycle, db *sql.DB, log logger.Logger) {
+func registerDBHooks(lc fx.Lifecycle, db repositories.Databaser, log logger.Logger) {
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
 			log.Infow(ctx, "closing database connection")

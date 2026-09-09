@@ -3,16 +3,11 @@ package controllers
 import (
 	"net/http"
 
-	jsoniter "github.com/json-iterator/go"
-
 	"github.com/telemetry-platform/alert-service/internal/core/ports/services"
 	"github.com/telemetry-platform/alert-service/internal/infrastructure/api/dtos"
 	apierrors "github.com/telemetry-platform/alert-service/internal/infrastructure/api/errors"
 	"github.com/telemetry-platform/alert-service/internal/infrastructure/pkg/logger"
 )
-
-// json is the json-iterator instance compatible with the standard library.
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Health is the HTTP controller for health-related endpoints.
 type Health struct {
