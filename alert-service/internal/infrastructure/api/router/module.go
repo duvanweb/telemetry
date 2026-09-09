@@ -22,6 +22,7 @@ func Module() fx.Option {
 			chi.NewRouter,
 			NewRouter,
 			controllers.NewHealth,
+			controllers.NewAlert,
 		),
 		fx.Invoke(registerHooks),
 	)

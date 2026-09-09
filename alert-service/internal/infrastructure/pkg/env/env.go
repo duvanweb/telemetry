@@ -9,7 +9,11 @@ import (
 
 // Configuration holds the application configuration loaded from environment.
 type Configuration struct {
-	HTTPPort string `env:"HTTP_PORT" envDefault:"8082"`
+	HTTPPort        string `env:"HTTP_PORT" envDefault:"8082"`
+	PostgresURL     string `env:"POSTGRES_URL" envDefault:"postgres://postgres:postgres@localhost:5432/alert_service?sslmode=disable"`
+	RedisAddr       string `env:"REDIS_ADDR" envDefault:"localhost:6379"`
+	RabbitMQURL     string `env:"RABBITMQ_URL" envDefault:"amqp://guest:guest@localhost:5672/"`
+	StoppedThreshold string `env:"STOPPED_THRESHOLD" envDefault:"60s"`
 }
 
 // LoadEnv loads configuration from environment variables into a struct of type T.

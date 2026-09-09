@@ -15,6 +15,7 @@ type Controllers struct {
 	fx.In
 
 	Health *controllers.Health
+	Alert  *controllers.Alert
 }
 
 // Router wraps the chi mux and registered routes.
@@ -37,7 +38,7 @@ func (r *Router) start(basePath string) http.Handler {
 	r.server.Get("/health", r.controllers.Health.GetHealth)
 
 	r.server.Route(basePath, func(route chi.Router) {
-		// Register business routes here as they are added.
+		route.Get("/alerts/stream", r.controllers.Alert.Stream)
 	})
 
 	return r.server
