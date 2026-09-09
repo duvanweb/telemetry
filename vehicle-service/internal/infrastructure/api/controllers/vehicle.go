@@ -20,11 +20,8 @@ type Vehicle struct {
 	service *vehicle.Service
 }
 
-// NewVehicle creates and returns a new Vehicle controller.
-func NewVehicle(log logger.Logger, svc *vehicle.Service) *Vehicle {
-	return &Vehicle{logger: log, service: svc}
-}
-
+// Create handles POST /api/vehicles requests.
+//
 // @Router /api/vehicles [post]
 // @Tags vehicles
 // @Summary Create a new vehicle.
@@ -34,7 +31,6 @@ func NewVehicle(log logger.Logger, svc *vehicle.Service) *Vehicle {
 // @Success 201 {object} dtos.VehicleResponse "Vehicle created."
 // @Failure 400 "Invalid plate format."
 // @Failure 409 "Vehicle already exists."
-// Create handles POST /api/vehicles requests.
 func (c *Vehicle) Create(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CreateVehicleRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -55,28 +51,33 @@ func (c *Vehicle) Create(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-// @Router /api/vehicles/{id} [delete]
+// FindByPlate handles GET /api/vehicles/plates/{plate} requests.
+//
+// @Router /api/vehicles/plates/{plate} [get]
 // @Tags vehicles
-// @Summary Soft-delete a vehicle.
-// @Param id path int true "Vehicle ID"
-// @Success 204 "Vehicle soft-deleted."
+// @Summary Get a vehicle by plate.
+// @Produce json
+// @Param plate path string true "Vehicle plate"
+// @Success 200 {object} dtos.VehicleResponse "Vehicle found."
 // @Failure 404 "Vehicle not found."
-// SoftDelete handles DELETE /api/vehicles/{id} requests.
-func (c *Vehicle) SoftDelete(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r)
-	if err != nil {
-		apierrors.WriteError(w, http.StatusBadRequest, err)
-		return
-	}
+func (c *Vehicle) FindByPlate(w http.ResponseWriter, r *http.Request) {
+	plate := chi.URLParam(r, "plate")
 
-	if err := c.service.SoftDelete(r.Context(), id); err != nil {
+	v, err := c.service.FindByPlate(r.Context(), plate)
+	if err != nil {
 		c.writeDomainError(w, r, err)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	response := toVehicleResponse(v)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
+// GetByID handles GET /api/vehicles/{id} requests.
+//
 // @Router /api/vehicles/{id} [get]
 // @Tags vehicles
 // @Summary Get a vehicle by ID.
@@ -84,7 +85,6 @@ func (c *Vehicle) SoftDelete(w http.ResponseWriter, r *http.Request) {
 // @Param id path int true "Vehicle ID"
 // @Success 200 {object} dtos.VehicleResponse "Vehicle found."
 // @Failure 404 "Vehicle not found."
-// GetByID handles GET /api/vehicles/{id} requests.
 func (c *Vehicle) GetByID(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r)
 	if err != nil {
@@ -105,30 +105,8 @@ func (c *Vehicle) GetByID(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-// @Router /api/vehicles/plates/{plate} [get]
-// @Tags vehicles
-// @Summary Get a vehicle by plate.
-// @Produce json
-// @Param plate path string true "Vehicle plate"
-// @Success 200 {object} dtos.VehicleResponse "Vehicle found."
-// @Failure 404 "Vehicle not found."
-// FindByPlate handles GET /api/vehicles/plates/{plate} requests.
-func (c *Vehicle) FindByPlate(w http.ResponseWriter, r *http.Request) {
-	plate := chi.URLParam(r, "plate")
-
-	v, err := c.service.FindByPlate(r.Context(), plate)
-	if err != nil {
-		c.writeDomainError(w, r, err)
-		return
-	}
-
-	response := toVehicleResponse(v)
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(response)
-}
-
+// List handles GET /api/vehicles requests.
+//
 // @Router /api/vehicles [get]
 // @Tags vehicles
 // @Summary List active vehicles with pagination.
@@ -136,7 +114,6 @@ func (c *Vehicle) FindByPlate(w http.ResponseWriter, r *http.Request) {
 // @Param limit query int false "Page limit (default 20, max 100)"
 // @Param offset query int false "Page offset (default 0)"
 // @Success 200 {object} dtos.ListVehiclesResponse "Paginated list of vehicles."
-// List handles GET /api/vehicles requests.
 func (c *Vehicle) List(w http.ResponseWriter, r *http.Request) {
 	limit, offset := parsePagination(r)
 
@@ -163,14 +140,32 @@ func (c *Vehicle) List(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(response)
 }
 
-// toVehicleResponse converts a domain Vehicle to a VehicleResponse DTO.
-func toVehicleResponse(v *domain.Vehicle) dtos.VehicleResponse {
-	return dtos.VehicleResponse{
-		ID:        v.ID,
-		Plate:     v.Plate,
-		CreatedAt: v.CreatedAt,
-		UpdatedAt: v.UpdatedAt,
+// NewVehicle creates and returns a new Vehicle controller.
+func NewVehicle(log logger.Logger, svc *vehicle.Service) *Vehicle {
+	return &Vehicle{logger: log, service: svc}
+}
+
+// SoftDelete handles DELETE /api/vehicles/{id} requests.
+//
+// @Router /api/vehicles/{id} [delete]
+// @Tags vehicles
+// @Summary Soft-delete a vehicle.
+// @Param id path int true "Vehicle ID"
+// @Success 204 "Vehicle soft-deleted."
+// @Failure 404 "Vehicle not found."
+func (c *Vehicle) SoftDelete(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r)
+	if err != nil {
+		apierrors.WriteError(w, http.StatusBadRequest, err)
+		return
 	}
+
+	if err := c.service.SoftDelete(r.Context(), id); err != nil {
+		c.writeDomainError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // parseID extracts and parses the vehicle ID from the URL path.
@@ -201,6 +196,16 @@ func parsePagination(r *http.Request) (limit, offset int) {
 	}
 
 	return limit, offset
+}
+
+// toVehicleResponse converts a domain Vehicle to a VehicleResponse DTO.
+func toVehicleResponse(v *domain.Vehicle) dtos.VehicleResponse {
+	return dtos.VehicleResponse{
+		ID:        v.ID,
+		Plate:     v.Plate,
+		CreatedAt: v.CreatedAt,
+		UpdatedAt: v.UpdatedAt,
+	}
 }
 
 // writeDomainError maps a domain error to the appropriate HTTP status code.
