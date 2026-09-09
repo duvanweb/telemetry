@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider, type UseQueryResult } from "@tanstack/react-query";
 import type { ListVehiclesResult } from "@/core/domain/pagination";
 import type { VehicleRepository } from "@/core/ports/vehicle-repository";
+import type { AlertRepository } from "@/core/ports/alert-repository";
 import { RepositoryProvider } from "@/app/repository-context";
 import { ApiError } from "@/infrastructure/http/errors";
 
@@ -31,13 +32,16 @@ function renderSection(initialPath = "/") {
     list: vi.fn(),
     findByPlate: vi.fn(),
   };
+  const mockAlertRepo: AlertRepository = {
+    list: vi.fn(),
+  };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <QueryClientProvider client={queryClient}>
-        <RepositoryProvider repository={mockRepo}>
+        <RepositoryProvider vehicleRepository={mockRepo} alertRepository={mockAlertRepo}>
           <VehiclesSection />
         </RepositoryProvider>
       </QueryClientProvider>
