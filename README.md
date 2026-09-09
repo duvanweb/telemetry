@@ -4,11 +4,14 @@ Monorepo for vehicle telemetry: backend microservices in Go (Clean / Hexagonal A
 
 ## Prerequisites
 
-| Tool | Version |
-|------|---------|
-| Go   | 1.26    |
+| Tool | Version           |
+|------|-------------------|
+| Go   | 1.26              |
+| Node | 20 LTS (or 22)    |
+| Expo | `npx expo@latest` |
 
-> Node, Docker, PostgreSQL, Redis and Kafka are not required for the current phase. They will be introduced in future specs.
+> Docker, PostgreSQL, Redis and Kafka are needed only to run the backend services
+> (see `docker-compose.yml`). The mobile app (`telemetry-movil`) needs Node + Expo only.
 
 ## Services
 
@@ -19,6 +22,7 @@ Each microservice is an independent Go module with its own `go.mod`. Resources a
 | vehicle-service  | `github.com/telemetry-platform/vehicle-service`     | `8080`       | `GET /health`   |
 | geo-service      | `github.com/telemetry-platform/geo-service`         | `8081`       | `GET /health`   |
 | alert-service    | `github.com/telemetry-platform/alert-service`       | `8082`       | `GET /health`   |
+| telemetry-movil  | `telemetry-movil/` (Expo + Expo Router, TypeScript) | n/a (client) | consumes `GET /health` of vehicle-service |
 
 ## Run a service
 
@@ -51,13 +55,34 @@ telemetry/
 ├── vehicle-service/   # Backend Go — vehicle management
 ├── geo-service/       # Backend Go — geolocation per vehicle
 ├── alert-service/     # Backend Go — alerts (geofences, speed, ...)
-├── telemetry-web/     # Frontend React (pending)
-└── telemetry-mobile/   # App React Native (pending)
+├── telemetry-movil/   # App React Native — vehicle register/search (Expo + Expo Router)
+└── telemetry-web/     # Frontend React (pending)
+```
+
+## Run the mobile app (telemetry-movil)
+
+Requires vehicle-service running (see above). From the repo root:
+
+```bash
+cd telemetry-movil
+npx expo start
+```
+
+Point the app at the backend via env (the `EXPO_PUBLIC_` prefix is required by Expo for
+client-side env):
+
+| Target           | `EXPO_PUBLIC_VEHICLE_SERVICE_URL` |
+|------------------|-----------------------------------|
+| iOS Sim / Web    | `http://localhost:8080` (default) |
+| Android Emulator | `http://10.0.2.2:8080`            |
+| Physical device  | `http://<host-LAN-IP>:8080`       |
+
+```bash
+EXPO_PUBLIC_VEHICLE_SERVICE_URL=http://10.0.2.2:8080 npx expo start --android
 ```
 
 ## Pending (future specs)
 
-- Frontend apps: `telemetry-web`, `telemetry-mobile`.
+- Frontend web app: `telemetry-web`.
 - Infrastructure: PostgreSQL, Redis, Kafka, Docker Compose.
-- Business endpoints and domain logic.
 - Readiness checks with real dependencies.
