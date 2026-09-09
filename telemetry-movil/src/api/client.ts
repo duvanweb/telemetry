@@ -1,4 +1,4 @@
-import { VEHICLE_SERVICE_URL } from "@/config/env";
+import { GEO_SERVICE_URL, VEHICLE_SERVICE_URL } from "@/config/env";
 
 // ApiError carries the HTTP status alongside the backend message.
 export class ApiError extends Error {
@@ -11,10 +11,14 @@ export class ApiError extends Error {
   }
 }
 
-// request is a thin fetch wrapper that prefixes the vehicle-service base URL,
-// parses the Go backend's {"message": string} error body on non-2xx, and types the success body.
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${VEHICLE_SERVICE_URL}${path}`, {
+// fetchJson is the shared HTTP wrapper: prefixes the base URL, parses the Go
+// backend's {"message": string} error body on non-2xx, and types the success body.
+async function fetchJson<T>(
+  baseUrl: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const res = await fetch(`${baseUrl}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
   });
@@ -33,4 +37,14 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   if (res.status === 204) return undefined as T;
 
   return (await res.json()) as T;
+}
+
+// request calls vehicle-service (kept for backward compatibility with SPEC 03).
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return fetchJson<T>(VEHICLE_SERVICE_URL, path, init);
+}
+
+// geoRequest calls geo-service (SPEC 02-geo position ingestion endpoint).
+export async function geoRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return fetchJson<T>(GEO_SERVICE_URL, path, init);
 }

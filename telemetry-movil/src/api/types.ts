@@ -6,3 +6,17 @@ export interface Vehicle {
   createdAt: string;
   updatedAt: string;
 }
+
+// GpsPosition mirrors the CreatePositionRequest body of geo-service
+// POST /api/vehicles/{vehicle_id}/positions (SPEC 02-geo).
+export interface GpsPosition {
+  lat: number;
+  lng: number;
+  timestamp: string; // RFC3339
+}
+
+// ReportState tracks the telemetry reporting lifecycle shown in the status card.
+export type ReportState = "idle" | "reporting" | "stopped" | "error";
+
+// TrackingMode selects the position source: real device GPS or simulated route.
+export type TrackingMode = "gps" | "simulation";
