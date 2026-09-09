@@ -22,6 +22,13 @@ type Consumer struct {
 	logger    logger.Logger
 }
 
+// Delivery is the interface for an AMQP delivery that can be acknowledged.
+// amqp.Delivery implements this interface.
+type Delivery interface {
+	Ack(multiple bool) error
+	Nack(multiple, requeue bool) error
+}
+
 // Start begins consuming messages from the alert_positions queue.
 // Each message is deserialized and processed by the AlertProcessor.
 // Runs in a goroutine until the channel is closed.
@@ -41,7 +48,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 	go func() {
 		for msg := range msgs {
-			c.processMessage(ctx, msg)
+			c.processMessage(ctx, msg.Body, msg)
 		}
 	}()
 
@@ -54,21 +61,21 @@ func (c *Consumer) Stop() error {
 }
 
 // processMessage deserializes a position, processes it, and acks/nacks the message.
-func (c *Consumer) processMessage(ctx context.Context, msg amqp.Delivery) {
+func (c *Consumer) processMessage(ctx context.Context, body []byte, delivery Delivery) {
 	var pos domain.Position
-	if err := json.Unmarshal(msg.Body, &pos); err != nil {
+	if err := json.Unmarshal(body, &pos); err != nil {
 		c.logger.Errorw(ctx, "failed to unmarshal position", "error", err)
-		_ = msg.Nack(false, false)
+		_ = delivery.Nack(false, false)
 		return
 	}
 
 	if err := c.processor.Process(ctx, pos); err != nil {
 		c.logger.Errorw(ctx, "failed to process position", "error", err)
-		_ = msg.Nack(false, false)
+		_ = delivery.Nack(false, false)
 		return
 	}
 
-	if err := msg.Ack(false); err != nil {
+	if err := delivery.Ack(false); err != nil {
 		c.logger.Errorw(ctx, "failed to ack message", "error", err)
 	}
 }
