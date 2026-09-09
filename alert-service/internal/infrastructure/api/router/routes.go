@@ -31,7 +31,6 @@ func NewRouter(server *chi.Mux, c Controllers) *Router {
 // start mounts middlewares and registers all routes under the base path.
 func (r *Router) start(basePath string) http.Handler {
 	r.server.Use(middleware.RequestID)
-	r.server.Use(middleware.RealIP)
 	r.server.Use(middleware.Logger)
 	r.server.Use(middleware.Recoverer)
 
