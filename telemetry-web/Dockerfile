@@ -4,9 +4,11 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-# Empty VITE_VEHICLE_SERVICE_URL makes API calls relative (routed through nginx proxy).
+# Empty VITE_*_SERVICE_URL makes API calls relative (routed through nginx proxy).
 ARG VITE_VEHICLE_SERVICE_URL=""
 ENV VITE_VEHICLE_SERVICE_URL=$VITE_VEHICLE_SERVICE_URL
+ARG VITE_ALERT_SERVICE_URL=""
+ENV VITE_ALERT_SERVICE_URL=$VITE_ALERT_SERVICE_URL
 RUN npm run build
 
 # Stage 2: serve with nginx

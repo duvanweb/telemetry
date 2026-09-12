@@ -174,3 +174,5 @@ services:
     depends_on:
       vehicle-service:
         condition: service_healthy
+      alert-service:
+        condition: service_healthy
