@@ -57,3 +57,49 @@ func TestRepository_Save(t *testing.T) {
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 }
+
+func TestRepository_DeleteByVehicleID(t *testing.T) {
+	t.Parallel()
+
+	t.Run("works correctly", func(t *testing.T) {
+		t.Parallel()
+		db, mock := newMockDB(t)
+		repo := positionrepo.NewRepository(db)
+
+		mock.ExpectExec(positionrepo.DeleteByVehicleIDQuery).
+			WithArgs(int64(1)).
+			WillReturnResult(sqlmock.NewResult(0, 5))
+
+		err := repo.DeleteByVehicleID(context.Background(), 1)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("works correctly when no positions exist", func(t *testing.T) {
+		t.Parallel()
+		db, mock := newMockDB(t)
+		repo := positionrepo.NewRepository(db)
+
+		mock.ExpectExec(positionrepo.DeleteByVehicleIDQuery).
+			WithArgs(int64(999)).
+			WillReturnResult(sqlmock.NewResult(0, 0))
+
+		err := repo.DeleteByVehicleID(context.Background(), 999)
+		assert.NoError(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("fails when query fails", func(t *testing.T) {
+		t.Parallel()
+		db, mock := newMockDB(t)
+		repo := positionrepo.NewRepository(db)
+
+		mock.ExpectExec(positionrepo.DeleteByVehicleIDQuery).
+			WithArgs(int64(1)).
+			WillReturnError(assert.AnError)
+
+		err := repo.DeleteByVehicleID(context.Background(), 1)
+		assert.Error(t, err)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}

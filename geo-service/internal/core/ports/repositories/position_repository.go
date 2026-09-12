@@ -11,4 +11,5 @@ import (
 //go:generate mockery --name PositionRepository --dir=. --output=./mocks
 type PositionRepository interface {
 	Save(ctx context.Context, pos domain.Position) error
+	DeleteByVehicleID(ctx context.Context, vehicleID int64) error
 }

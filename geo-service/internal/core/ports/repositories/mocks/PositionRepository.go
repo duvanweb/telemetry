@@ -32,6 +32,24 @@ func (_m *PositionRepository) Save(ctx context.Context, pos domain.Position) err
 	return r0
 }
 
+// DeleteByVehicleID provides a mock function with given fields: ctx, vehicleID
+func (_m *PositionRepository) DeleteByVehicleID(ctx context.Context, vehicleID int64) error {
+	ret := _m.Called(ctx, vehicleID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteByVehicleID")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, vehicleID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewPositionRepository creates a new instance of PositionRepository. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewPositionRepository(t interface {

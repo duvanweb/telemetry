@@ -65,6 +65,17 @@ func (t *Tracker) Set(ctx context.Context, track domain.VehicleTrack) error {
 	return nil
 }
 
+// Delete removes the vehicle track from Redis.
+// This is invoked when a vehicle is deleted to clean up orphaned tracker data.
+// The operation is idempotent — deleting a non-existent key is a no-op.
+func (t *Tracker) Delete(ctx context.Context, vehicleID int64) error {
+	key := buildTrackKey(vehicleID)
+	if err := t.client.Del(ctx, key).Err(); err != nil {
+		return fmt.Errorf("failed to delete vehicle track: %w", err)
+	}
+	return nil
+}
+
 // buildTrackKey builds the Redis key for a vehicle track.
 func buildTrackKey(vehicleID int64) string {
 	return "alert:vehicle:" + strconv.FormatInt(vehicleID, 10)
