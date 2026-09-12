@@ -30,6 +30,9 @@ interface MonitoringStore {
   enqueue: (p: GpsPosition) => void;
   dequeue: () => GpsPosition | undefined;
   clearQueue: () => void;
+  // reset restores all monitoring state to defaults. Called when the user
+  // exits (clears the active vehicle) to prevent cross-vehicle data leakage.
+  reset: () => void;
 }
 
 // useMonitoringStore persists the monitoring state (including the offline queue)
@@ -65,6 +68,15 @@ export const useMonitoringStore = create<MonitoringStore>()(
         return next;
       },
       clearQueue: () => set({ queue: [] }),
+      reset: () =>
+        set({
+          reportState: "idle",
+          mode: "simulation",
+          offline: false,
+          vehicleStopped: false,
+          lastPosition: null,
+          queue: [],
+        }),
     }),
     {
       name: "telemetry-movil:monitoring:v1",
