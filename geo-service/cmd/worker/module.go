@@ -26,7 +26,9 @@ func Module() fx.Option {
 			fx.Annotate(positionrepo.NewRepository, fx.As(new(repositories.PositionRepository))),
 		),
 		fx.Provide(rabbitmq.NewConsumer),
+		fx.Provide(rabbitmq.NewVehicleDeletionConsumer),
 		fx.Invoke(registerConsumerHooks),
+		fx.Invoke(registerVehicleDeletionConsumerHooks),
 	)
 }
 
@@ -39,6 +41,20 @@ func registerConsumerHooks(lc fx.Lifecycle, consumer *rabbitmq.Consumer, log log
 		},
 		OnStop: func(ctx context.Context) error {
 			log.Infow(ctx, "stopping position consumer")
+			return consumer.Stop()
+		},
+	})
+}
+
+// registerVehicleDeletionConsumerHooks starts and stops the vehicle deletion consumer via FX lifecycle.
+func registerVehicleDeletionConsumerHooks(lc fx.Lifecycle, consumer *rabbitmq.VehicleDeletionConsumer, log logger.Logger) {
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			log.Infow(ctx, "starting vehicle deletion consumer")
+			return consumer.Start(ctx)
+		},
+		OnStop: func(ctx context.Context) error {
+			log.Infow(ctx, "stopping vehicle deletion consumer")
 			return consumer.Stop()
 		},
 	})

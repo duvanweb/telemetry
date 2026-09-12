@@ -30,3 +30,14 @@ func (r *Repository) Save(ctx context.Context, pos domain.Position) error {
 	}
 	return nil
 }
+
+// DeleteByVehicleID deletes all GPS positions for the given vehicle ID.
+// This is invoked when a vehicle is deleted to clean up orphaned position data.
+// The operation is idempotent — deleting from an empty set is a no-op.
+func (r *Repository) DeleteByVehicleID(ctx context.Context, vehicleID int64) error {
+	_, err := r.db.ExecContext(ctx, DeleteByVehicleIDQuery, vehicleID)
+	if err != nil {
+		return fmt.Errorf("failed to delete positions by vehicle id: %w", err)
+	}
+	return nil
+}

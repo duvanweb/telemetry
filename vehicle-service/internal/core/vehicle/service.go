@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"regexp"
+	"time"
 
 	"github.com/telemetry-platform/vehicle-service/internal/core/domain"
 	"github.com/telemetry-platform/vehicle-service/internal/core/ports/repositories"
+	"github.com/telemetry-platform/vehicle-service/internal/core/ports/resources"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/pkg/logger"
 )
 
@@ -21,8 +23,9 @@ var plateRegex = regexp.MustCompile(`^[A-Z]{3}-[0-9]{3}$`)
 
 // Service implements the vehicle business logic.
 type Service struct {
-	repo   repositories.VehicleRepository
-	logger logger.Logger
+	repo          repositories.VehicleRepository
+	eventPublisher resources.EventPublisher
+	logger        logger.Logger
 }
 
 // Create validates the plate format and persists a new vehicle.
@@ -97,16 +100,25 @@ func (s *Service) List(ctx context.Context, limit, offset int) ([]domain.Vehicle
 }
 
 // NewService creates and returns a new vehicle Service.
-func NewService(repo repositories.VehicleRepository, log logger.Logger) *Service {
-	return &Service{repo: repo, logger: log}
+func NewService(repo repositories.VehicleRepository, pub resources.EventPublisher, log logger.Logger) *Service {
+	return &Service{repo: repo, eventPublisher: pub, logger: log}
 }
 
-// SoftDelete marks a vehicle as deleted by setting deleted_at.
-// Returns ErrVehicleNotFound if the vehicle does not exist or is already soft-deleted.
+// SoftDelete marks a vehicle as deleted by setting deleted_at, then publishes a
+// vehicle.deleted event so downstream services (geo-service, alert-service) can
+// clean up orphaned data. If the event publish fails, the error is logged but
+// NOT returned — the vehicle is already soft-deleted and the event will be
+// retried via a reconciliation process or manual intervention.
 func (s *Service) SoftDelete(ctx context.Context, id int64) error {
 	if err := s.repo.SoftDelete(ctx, id); err != nil {
 		s.logger.Errorw(ctx, "failed to soft delete vehicle", "id", id, "error", err)
 		return err
+	}
+
+	// Publish the vehicle.deleted event for downstream cleanup.
+	// Best-effort: log on failure but don't fail the request.
+	if err := s.eventPublisher.PublishVehicleDeleted(ctx, id, time.Now()); err != nil {
+		s.logger.Errorw(ctx, "failed to publish vehicle deleted event", "id", id, "error", err)
 	}
 
 	return nil

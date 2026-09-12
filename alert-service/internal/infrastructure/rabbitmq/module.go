@@ -8,13 +8,14 @@ import (
 	"github.com/telemetry-platform/alert-service/internal/infrastructure/pkg/logger"
 )
 
-// Module provides the RabbitMQ client and consumer via FX.
+// Module provides the RabbitMQ client and consumers via FX.
 func Module() fx.Option {
 	return fx.Module(
 		"rabbitmq",
 		fx.Provide(
 			NewClient,
 			NewConsumer,
+			NewVehicleDeletionConsumer,
 		),
 		fx.Invoke(registerRabbitMQHooks),
 	)

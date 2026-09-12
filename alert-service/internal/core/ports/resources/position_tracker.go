@@ -12,4 +12,5 @@ import (
 type PositionTracker interface {
 	Get(ctx context.Context, vehicleID int64) (domain.VehicleTrack, error)
 	Set(ctx context.Context, track domain.VehicleTrack) error
+	Delete(ctx context.Context, vehicleID int64) error
 }

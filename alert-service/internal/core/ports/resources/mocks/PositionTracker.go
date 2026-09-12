@@ -60,6 +60,24 @@ func (_m *PositionTracker) Set(ctx context.Context, track domain.VehicleTrack) e
 	return r0
 }
 
+// Delete provides a mock function with given fields: ctx, vehicleID
+func (_m *PositionTracker) Delete(ctx context.Context, vehicleID int64) error {
+	ret := _m.Called(ctx, vehicleID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Delete")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
+		r0 = rf(ctx, vehicleID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
 // NewPositionTracker creates a new instance of PositionTracker. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewPositionTracker(t interface {

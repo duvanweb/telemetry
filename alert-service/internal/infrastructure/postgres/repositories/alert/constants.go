@@ -9,4 +9,7 @@ const (
 
 	// CountAlertsQuery counts the total number of alerts.
 	CountAlertsQuery = `SELECT COUNT(*) FROM alerts`
+
+	// DeleteByVehicleIDQuery deletes all alerts for a given vehicle.
+	DeleteByVehicleIDQuery = `DELETE FROM alerts WHERE vehicle_id = $1`
 )
