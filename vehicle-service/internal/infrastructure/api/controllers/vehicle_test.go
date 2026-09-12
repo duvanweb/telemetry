@@ -15,6 +15,7 @@ import (
 
 	"github.com/telemetry-platform/vehicle-service/internal/core/domain"
 	repomocks "github.com/telemetry-platform/vehicle-service/internal/core/ports/repositories/mocks"
+	resmocks "github.com/telemetry-platform/vehicle-service/internal/core/ports/resources/mocks"
 	"github.com/telemetry-platform/vehicle-service/internal/core/vehicle"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/api/controllers"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/pkg/logger"
@@ -22,12 +23,13 @@ import (
 )
 
 // newTestVehicleController creates a Vehicle controller with a mock repository for testing.
-func newTestVehicleController(t *testing.T) (*controllers.Vehicle, *repomocks.VehicleRepository) {
+func newTestVehicleController(t *testing.T) (*controllers.Vehicle, *repomocks.VehicleRepository, *resmocks.EventPublisher) {
 	t.Helper()
 	repo := repomocks.NewVehicleRepository(t)
-	svc := vehicle.NewService(repo, logger.NewLogger())
+	pub := resmocks.NewEventPublisher(t)
+	svc := vehicle.NewService(repo, pub, logger.NewLogger())
 	c := controllers.NewVehicle(logger.NewLogger(), svc)
-	return c, repo
+	return c, repo, pub
 }
 
 // newRequestWithChiParam creates a request with chi URL params set.
@@ -84,7 +86,7 @@ func TestVehicle_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c, repo := newTestVehicleController(t)
+			c, repo, _ := newTestVehicleController(t)
 			tt.setup(repo)
 
 			req := httptest.NewRequest(http.MethodPost, "/api/vehicles", strings.NewReader(tt.body))
@@ -127,7 +129,7 @@ func TestVehicle_FindByPlate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c, repo := newTestVehicleController(t)
+			c, repo, _ := newTestVehicleController(t)
 			tt.setup(repo)
 
 			req := newRequestWithChiParam(http.MethodGet, "/api/vehicles/plates/"+tt.plate, "", map[string]string{"plate": tt.plate})
@@ -176,7 +178,7 @@ func TestVehicle_GetByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c, repo := newTestVehicleController(t)
+			c, repo, _ := newTestVehicleController(t)
 			tt.setup(repo)
 
 			req := newRequestWithChiParam(http.MethodGet, "/api/vehicles/"+tt.id, "", map[string]string{"id": tt.id})
@@ -219,7 +221,7 @@ func TestVehicle_List(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c, repo := newTestVehicleController(t)
+			c, repo, _ := newTestVehicleController(t)
 			tt.setup(repo)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/vehicles"+tt.query, nil)
@@ -238,27 +240,28 @@ func TestVehicle_SoftDelete(t *testing.T) {
 	tests := []struct {
 		name         string
 		id           string
-		setup        func(*repomocks.VehicleRepository)
+		setup        func(*repomocks.VehicleRepository, *resmocks.EventPublisher)
 		expectedCode int
 	}{
 		{
 			name: "works correctly",
 			id:   "1",
-			setup: func(m *repomocks.VehicleRepository) {
+			setup: func(m *repomocks.VehicleRepository, p *resmocks.EventPublisher) {
 				m.On("SoftDelete", mock.Anything, int64(1)).Return(nil)
+				p.On("PublishVehicleDeleted", mock.Anything, int64(1), mock.Anything).Return(nil)
 			},
 			expectedCode: http.StatusNoContent,
 		},
 		{
 			name:         "handles correctly when id is invalid",
 			id:           "abc",
-			setup:        func(m *repomocks.VehicleRepository) {},
+			setup:        func(m *repomocks.VehicleRepository, _ *resmocks.EventPublisher) {},
 			expectedCode: http.StatusBadRequest,
 		},
 		{
 			name: "handles correctly when vehicle not found",
 			id:   "999",
-			setup: func(m *repomocks.VehicleRepository) {
+			setup: func(m *repomocks.VehicleRepository, _ *resmocks.EventPublisher) {
 				m.On("SoftDelete", mock.Anything, int64(999)).Return(domain.ErrVehicleNotFound)
 			},
 			expectedCode: http.StatusNotFound,
@@ -268,8 +271,8 @@ func TestVehicle_SoftDelete(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			c, repo := newTestVehicleController(t)
-			tt.setup(repo)
+			c, repo, pub := newTestVehicleController(t)
+			tt.setup(repo, pub)
 
 			req := newRequestWithChiParam(http.MethodDelete, "/api/vehicles/"+tt.id, "", map[string]string{"id": tt.id})
 			rec := httptest.NewRecorder()

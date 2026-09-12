@@ -8,18 +8,20 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	"github.com/telemetry-platform/vehicle-service/internal/core/domain"
-	"github.com/telemetry-platform/vehicle-service/internal/core/ports/repositories/mocks"
+	reposmocks "github.com/telemetry-platform/vehicle-service/internal/core/ports/repositories/mocks"
+	resmocks "github.com/telemetry-platform/vehicle-service/internal/core/ports/resources/mocks"
 	"github.com/telemetry-platform/vehicle-service/internal/core/vehicle"
 	"github.com/telemetry-platform/vehicle-service/internal/infrastructure/pkg/logger"
 	testdata "github.com/telemetry-platform/vehicle-service/test/data"
 )
 
-// newTestService creates a vehicle Service with a mock repository for testing.
-func newTestService(t *testing.T) (*vehicle.Service, *mocks.VehicleRepository) {
+// newTestService creates a vehicle Service with mock repository and event publisher for testing.
+func newTestService(t *testing.T) (*vehicle.Service, *reposmocks.VehicleRepository, *resmocks.EventPublisher) {
 	t.Helper()
-	repo := mocks.NewVehicleRepository(t)
-	svc := vehicle.NewService(repo, logger.NewLogger())
-	return svc, repo
+	repo := reposmocks.NewVehicleRepository(t)
+	pub := resmocks.NewEventPublisher(t)
+	svc := vehicle.NewService(repo, pub, logger.NewLogger())
+	return svc, repo, pub
 }
 
 func TestService_Create(t *testing.T) {
@@ -28,13 +30,13 @@ func TestService_Create(t *testing.T) {
 	tests := []struct {
 		name        string
 		plate       string
-		setup       func(*mocks.VehicleRepository)
+		setup       func(*reposmocks.VehicleRepository)
 		expectedErr error
 	}{
 		{
 			name:  "works correctly",
 			plate: "ABC-123",
-			setup: func(m *mocks.VehicleRepository) {
+			setup: func(m *reposmocks.VehicleRepository) {
 				m.On("FindByPlate", mock.Anything, "ABC-123").Return(nil, domain.ErrVehicleNotFound)
 				m.On("Create", mock.Anything, mock.Anything).Return(nil)
 			},
@@ -43,25 +45,25 @@ func TestService_Create(t *testing.T) {
 		{
 			name:        "handles correctly when plate is invalid lowercase",
 			plate:       "abc-123",
-			setup:       func(m *mocks.VehicleRepository) {},
+			setup:       func(m *reposmocks.VehicleRepository) {},
 			expectedErr: domain.ErrInvalidPlate,
 		},
 		{
 			name:        "handles correctly when plate is invalid too short",
 			plate:       "ABC-12",
-			setup:       func(m *mocks.VehicleRepository) {},
+			setup:       func(m *reposmocks.VehicleRepository) {},
 			expectedErr: domain.ErrInvalidPlate,
 		},
 		{
 			name:        "handles correctly when plate is invalid too long",
 			plate:       "ABCD-123",
-			setup:       func(m *mocks.VehicleRepository) {},
+			setup:       func(m *reposmocks.VehicleRepository) {},
 			expectedErr: domain.ErrInvalidPlate,
 		},
 		{
 			name:  "handles correctly when vehicle already exists",
 			plate: "ABC-123",
-			setup: func(m *mocks.VehicleRepository) {
+			setup: func(m *reposmocks.VehicleRepository) {
 				m.On("FindByPlate", mock.Anything, "ABC-123").Return(testdata.GetTestVehicle(), nil)
 			},
 			expectedErr: domain.ErrVehicleAlreadyExists,
@@ -69,7 +71,7 @@ func TestService_Create(t *testing.T) {
 		{
 			name:  "fails when repository FindByPlate fails",
 			plate: "ABC-123",
-			setup: func(m *mocks.VehicleRepository) {
+			setup: func(m *reposmocks.VehicleRepository) {
 				m.On("FindByPlate", mock.Anything, "ABC-123").Return(nil, assert.AnError)
 			},
 			expectedErr: assert.AnError,
@@ -77,7 +79,7 @@ func TestService_Create(t *testing.T) {
 		{
 			name:  "fails when repository Create fails",
 			plate: "ABC-123",
-			setup: func(m *mocks.VehicleRepository) {
+			setup: func(m *reposmocks.VehicleRepository) {
 				m.On("FindByPlate", mock.Anything, "ABC-123").Return(nil, domain.ErrVehicleNotFound)
 				m.On("Create", mock.Anything, mock.Anything).Return(assert.AnError)
 			},
@@ -88,7 +90,7 @@ func TestService_Create(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc, repo := newTestService(t)
+			svc, repo, _ := newTestService(t)
 			tt.setup(repo)
 
 			v := &domain.Vehicle{Plate: tt.plate}
@@ -105,14 +107,14 @@ func TestService_FindByPlate(t *testing.T) {
 	tests := []struct {
 		name          string
 		plate         string
-		setup         func(*mocks.VehicleRepository) *domain.Vehicle
+		setup         func(*reposmocks.VehicleRepository) *domain.Vehicle
 		expectedErr   error
 		expectVehicle bool
 	}{
 		{
 			name:  "works correctly",
 			plate: "ABC-123",
-			setup: func(m *mocks.VehicleRepository) *domain.Vehicle {
+			setup: func(m *reposmocks.VehicleRepository) *domain.Vehicle {
 				v := testdata.GetTestVehicle()
 				m.On("FindByPlate", mock.Anything, "ABC-123").Return(v, nil)
 				return v
@@ -123,7 +125,7 @@ func TestService_FindByPlate(t *testing.T) {
 		{
 			name:  "handles correctly when vehicle not found",
 			plate: "ZZZ-999",
-			setup: func(m *mocks.VehicleRepository) *domain.Vehicle {
+			setup: func(m *reposmocks.VehicleRepository) *domain.Vehicle {
 				m.On("FindByPlate", mock.Anything, "ZZZ-999").Return(nil, domain.ErrVehicleNotFound)
 				return nil
 			},
@@ -135,7 +137,7 @@ func TestService_FindByPlate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc, repo := newTestService(t)
+			svc, repo, _ := newTestService(t)
 			expected := tt.setup(repo)
 
 			v, err := svc.FindByPlate(context.Background(), tt.plate)
@@ -156,14 +158,14 @@ func TestService_GetByID(t *testing.T) {
 	tests := []struct {
 		name          string
 		id            int64
-		setup         func(*mocks.VehicleRepository) *domain.Vehicle
+		setup         func(*reposmocks.VehicleRepository) *domain.Vehicle
 		expectedErr   error
 		expectVehicle bool
 	}{
 		{
 			name: "works correctly",
 			id:   testdata.GetTestVehicleID(),
-			setup: func(m *mocks.VehicleRepository) *domain.Vehicle {
+			setup: func(m *reposmocks.VehicleRepository) *domain.Vehicle {
 				v := testdata.GetTestVehicle()
 				m.On("GetByID", mock.Anything, testdata.GetTestVehicleID()).Return(v, nil)
 				return v
@@ -174,7 +176,7 @@ func TestService_GetByID(t *testing.T) {
 		{
 			name: "handles correctly when vehicle not found",
 			id:   999,
-			setup: func(m *mocks.VehicleRepository) *domain.Vehicle {
+			setup: func(m *reposmocks.VehicleRepository) *domain.Vehicle {
 				m.On("GetByID", mock.Anything, int64(999)).Return(nil, domain.ErrVehicleNotFound)
 				return nil
 			},
@@ -186,7 +188,7 @@ func TestService_GetByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc, repo := newTestService(t)
+			svc, repo, _ := newTestService(t)
 			expected := tt.setup(repo)
 
 			v, err := svc.GetByID(context.Background(), tt.id)
@@ -239,7 +241,7 @@ func TestService_List(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc, repo := newTestService(t)
+			svc, repo, _ := newTestService(t)
 			repo.On("List", mock.Anything, tt.expectedLimit, tt.expectedOffset).
 				Return(vehicles, int64(len(vehicles)), nil)
 
@@ -258,32 +260,42 @@ func TestService_SoftDelete(t *testing.T) {
 	tests := []struct {
 		name        string
 		id          int64
-		setup       func(*mocks.VehicleRepository)
+		setup       func(*reposmocks.VehicleRepository, *resmocks.EventPublisher)
 		expectedErr error
 	}{
 		{
 			name: "works correctly",
 			id:   testdata.GetTestVehicleID(),
-			setup: func(m *mocks.VehicleRepository) {
+			setup: func(m *reposmocks.VehicleRepository, p *resmocks.EventPublisher) {
 				m.On("SoftDelete", mock.Anything, testdata.GetTestVehicleID()).Return(nil)
+				p.On("PublishVehicleDeleted", mock.Anything, testdata.GetTestVehicleID(), mock.Anything).Return(nil)
 			},
 			expectedErr: nil,
 		},
 		{
 			name: "handles correctly when vehicle not found",
 			id:   999,
-			setup: func(m *mocks.VehicleRepository) {
+			setup: func(m *reposmocks.VehicleRepository, _ *resmocks.EventPublisher) {
 				m.On("SoftDelete", mock.Anything, int64(999)).Return(domain.ErrVehicleNotFound)
 			},
 			expectedErr: domain.ErrVehicleNotFound,
+		},
+		{
+			name: "succeeds even when event publish fails",
+			id:   testdata.GetTestVehicleID(),
+			setup: func(m *reposmocks.VehicleRepository, p *resmocks.EventPublisher) {
+				m.On("SoftDelete", mock.Anything, testdata.GetTestVehicleID()).Return(nil)
+				p.On("PublishVehicleDeleted", mock.Anything, testdata.GetTestVehicleID(), mock.Anything).Return(assert.AnError)
+			},
+			expectedErr: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			svc, repo := newTestService(t)
-			tt.setup(repo)
+			svc, repo, pub := newTestService(t)
+			tt.setup(repo, pub)
 
 			err := svc.SoftDelete(context.Background(), tt.id)
 

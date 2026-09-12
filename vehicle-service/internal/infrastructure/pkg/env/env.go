@@ -9,13 +9,14 @@ import (
 
 // Configuration holds the application configuration loaded from environment.
 type Configuration struct {
-	HTTPPort   string `env:"HTTP_PORT" envDefault:"8080"`
-	DBHost     string `env:"DB_HOST" envDefault:"localhost"`
-	DBPort     string `env:"DB_PORT" envDefault:"5432"`
-	DBUser     string `env:"DB_USER" envDefault:"postgres"`
-	DBPassword string `env:"DB_PASSWORD" envDefault:"postgres"`
-	DBName     string `env:"DB_NAME" envDefault:"telemetry_vehicle"`
-	DBSSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
+	HTTPPort    string `env:"HTTP_PORT" envDefault:"8080"`
+	DBHost      string `env:"DB_HOST" envDefault:"localhost"`
+	DBPort      string `env:"DB_PORT" envDefault:"5432"`
+	DBUser      string `env:"DB_USER" envDefault:"postgres"`
+	DBPassword  string `env:"DB_PASSWORD" envDefault:"postgres"`
+	DBName      string `env:"DB_NAME" envDefault:"telemetry_vehicle"`
+	DBSSLMode   string `env:"DB_SSLMODE" envDefault:"disable"`
+	RabbitMQURL string `env:"RABBITMQ_URL" envDefault:"amqp://guest:guest@localhost:5672/"`
 }
 
 // LoadEnv loads configuration from environment variables into a struct of type T.

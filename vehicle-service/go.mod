@@ -7,6 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.3.2
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/json-iterator/go v1.1.12
+	github.com/rabbitmq/amqp091-go v1.14.0
 	github.com/stretchr/testify v1.11.1
 	go.uber.org/fx v1.24.0
 )
