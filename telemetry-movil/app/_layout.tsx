@@ -11,11 +11,21 @@ import "@/tracking/background-task";
 
 const queryClient = new QueryClient();
 
+// RootLayout sets up the providers and the Stack navigator. The Stack contains
+// the non-tab screens (index redirect, setup, register, search) and the (tabs)
+// route group which provides the bottom tab navigator for Home, Alerts, Exit.
+// All headers are hidden — each screen manages its own SafeAreaView layout.
 export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
-        <Stack />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="setup" />
+          <Stack.Screen name="register" />
+          <Stack.Screen name="search" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
       </SafeAreaProvider>
     </QueryClientProvider>
   );

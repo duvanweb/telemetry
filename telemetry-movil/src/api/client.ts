@@ -1,4 +1,4 @@
-import { GEO_SERVICE_URL, VEHICLE_SERVICE_URL } from "@/config/env";
+import { ALERT_SERVICE_URL, GEO_SERVICE_URL, VEHICLE_SERVICE_URL } from "@/config/env";
 
 // ApiError carries the HTTP status alongside the backend message.
 export class ApiError extends Error {
@@ -47,4 +47,9 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
 // geoRequest calls geo-service (SPEC 02-geo position ingestion endpoint).
 export async function geoRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return fetchJson<T>(GEO_SERVICE_URL, path, init);
+}
+
+// alertRequest calls alert-service (alerts list + SSE stream).
+export async function alertRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return fetchJson<T>(ALERT_SERVICE_URL, path, init);
 }

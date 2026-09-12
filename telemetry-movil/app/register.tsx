@@ -33,7 +33,7 @@ export default function RegisterScreen() {
     mutationFn: createVehicle,
     onSuccess: (vehicle: Vehicle) => {
       setActiveVehicle(vehicle);
-      router.replace('/');
+      router.replace('/home');
     },
   });
 

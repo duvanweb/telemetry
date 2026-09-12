@@ -33,7 +33,7 @@ export default function SearchScreen() {
     mutationFn: findByPlate,
     onSuccess: (vehicle: Vehicle) => {
       setActiveVehicle(vehicle);
-      router.replace('/');
+      router.replace('/home');
     },
   });
 
