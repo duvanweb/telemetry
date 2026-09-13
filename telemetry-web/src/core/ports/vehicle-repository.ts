@@ -6,4 +6,5 @@ import type { ListVehiclesResult } from "../domain/pagination";
 export interface VehicleRepository {
   list(params: { limit: number; offset: number; signal?: AbortSignal }): Promise<ListVehiclesResult>;
   findByPlate(plate: string, signal?: AbortSignal): Promise<Vehicle>;
+  create(plate: string, signal?: AbortSignal): Promise<Vehicle>;
 }

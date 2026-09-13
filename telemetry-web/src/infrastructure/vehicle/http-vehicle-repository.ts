@@ -25,4 +25,8 @@ export class HttpVehicleRepository implements VehicleRepository {
       signal,
     );
   }
+
+  async create(plate: string, signal?: AbortSignal): Promise<Vehicle> {
+    return this.http.post<Vehicle>("/api/vehicles", { plate }, signal);
+  }
 }

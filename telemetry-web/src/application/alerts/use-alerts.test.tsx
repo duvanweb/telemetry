@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { VehicleRepository } from "@/core/ports/vehicle-repository";
 import type { AlertRepository } from "@/core/ports/alert-repository";
+import type { PositionRepository } from "@/core/ports/position-repository";
 import type { ListAlertsResult } from "@/core/domain/pagination";
 import { RepositoryProvider } from "@/app/repository-context";
 import { useAlerts } from "@/application/alerts/use-alerts";
@@ -21,6 +22,12 @@ const ALERT = {
 const mockVehicleRepo: VehicleRepository = {
   list: vi.fn(),
   findByPlate: vi.fn(),
+  create: vi.fn(),
+};
+
+const mockPositionRepo: PositionRepository = {
+  sendPosition: vi.fn(),
+  sendMalformed: vi.fn(),
 };
 
 function createWrapper(alertRepository: AlertRepository) {
@@ -30,7 +37,7 @@ function createWrapper(alertRepository: AlertRepository) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <RepositoryProvider vehicleRepository={mockVehicleRepo} alertRepository={alertRepository}>
+        <RepositoryProvider vehicleRepository={mockVehicleRepo} alertRepository={alertRepository} positionRepository={mockPositionRepo}>
           {children}
         </RepositoryProvider>
       </QueryClientProvider>

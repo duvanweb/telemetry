@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, type UseQueryResult } from "@tanstack
 import type { ListVehiclesResult } from "@/core/domain/pagination";
 import type { VehicleRepository } from "@/core/ports/vehicle-repository";
 import type { AlertRepository } from "@/core/ports/alert-repository";
+import type { PositionRepository } from "@/core/ports/position-repository";
 import { RepositoryProvider } from "@/app/repository-context";
 import { ApiError } from "@/infrastructure/http/errors";
 
@@ -31,9 +32,14 @@ function renderSection(initialPath = "/") {
   const mockRepo: VehicleRepository = {
     list: vi.fn(),
     findByPlate: vi.fn(),
+    create: vi.fn(),
   };
   const mockAlertRepo: AlertRepository = {
     list: vi.fn(),
+  };
+  const mockPositionRepo: PositionRepository = {
+    sendPosition: vi.fn(),
+    sendMalformed: vi.fn(),
   };
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -41,7 +47,7 @@ function renderSection(initialPath = "/") {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <QueryClientProvider client={queryClient}>
-        <RepositoryProvider vehicleRepository={mockRepo} alertRepository={mockAlertRepo}>
+        <RepositoryProvider vehicleRepository={mockRepo} alertRepository={mockAlertRepo} positionRepository={mockPositionRepo}>
           <VehiclesSection />
         </RepositoryProvider>
       </QueryClientProvider>

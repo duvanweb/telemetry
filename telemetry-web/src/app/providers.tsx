@@ -4,7 +4,8 @@ import { RepositoryProvider } from "@/app/repository-context";
 import { HttpClient } from "@/infrastructure/http/client";
 import { HttpVehicleRepository } from "@/infrastructure/vehicle/http-vehicle-repository";
 import { HttpAlertRepository } from "@/infrastructure/alert/http-alert-repository";
-import { VEHICLE_SERVICE_URL, ALERT_SERVICE_URL } from "@/infrastructure/config/env";
+import { HttpPositionRepository } from "@/infrastructure/position/http-position-repository";
+import { VEHICLE_SERVICE_URL, ALERT_SERVICE_URL, GEO_SERVICE_URL } from "@/infrastructure/config/env";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,11 +25,19 @@ const alertRepository = new HttpAlertRepository(
   new HttpClient(ALERT_SERVICE_URL),
 );
 
+const positionRepository = new HttpPositionRepository(
+  new HttpClient(GEO_SERVICE_URL),
+);
+
 // Providers — wraps the app with QueryClientProvider and RepositoryProvider.
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <RepositoryProvider vehicleRepository={vehicleRepository} alertRepository={alertRepository}>
+      <RepositoryProvider
+        vehicleRepository={vehicleRepository}
+        alertRepository={alertRepository}
+        positionRepository={positionRepository}
+      >
         {children}
       </RepositoryProvider>
     </QueryClientProvider>

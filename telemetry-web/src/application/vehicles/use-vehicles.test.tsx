@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import type { VehicleRepository } from "@/core/ports/vehicle-repository";
 import type { AlertRepository } from "@/core/ports/alert-repository";
+import type { PositionRepository } from "@/core/ports/position-repository";
 import { RepositoryProvider } from "@/app/repository-context";
 import { useVehicles } from "@/application/vehicles/use-vehicles";
 import { useVehicleByPlate } from "@/application/vehicles/use-vehicle-by-plate";
@@ -19,6 +20,11 @@ const mockAlertRepo: AlertRepository = {
   list: vi.fn(),
 };
 
+const mockPositionRepo: PositionRepository = {
+  sendPosition: vi.fn(),
+  sendMalformed: vi.fn(),
+};
+
 function createWrapper(repository: VehicleRepository) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -26,7 +32,7 @@ function createWrapper(repository: VehicleRepository) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (
       <QueryClientProvider client={queryClient}>
-        <RepositoryProvider vehicleRepository={repository} alertRepository={mockAlertRepo}>
+        <RepositoryProvider vehicleRepository={repository} alertRepository={mockAlertRepo} positionRepository={mockPositionRepo}>
           {children}
         </RepositoryProvider>
       </QueryClientProvider>
@@ -40,6 +46,7 @@ describe("useVehicles", () => {
     const mockRepo: VehicleRepository = {
       list: vi.fn().mockResolvedValue(payload),
       findByPlate: vi.fn(),
+      create: vi.fn(),
     };
 
     const { result } = renderHook(() => useVehicles({ limit: 10, offset: 0 }), {
@@ -57,6 +64,7 @@ describe("useVehicles", () => {
     const mockRepo: VehicleRepository = {
       list: vi.fn().mockRejectedValue(new Error("fail")),
       findByPlate: vi.fn(),
+      create: vi.fn(),
     };
 
     const { result } = renderHook(() => useVehicles({ limit: 10, offset: 0 }), {
@@ -72,6 +80,7 @@ describe("useVehicleByPlate", () => {
     const mockRepo: VehicleRepository = {
       list: vi.fn(),
       findByPlate: vi.fn().mockResolvedValue(VEHICLE),
+      create: vi.fn(),
     };
 
     const { result } = renderHook(() => useVehicleByPlate("ABC-123"), {
@@ -86,6 +95,7 @@ describe("useVehicleByPlate", () => {
     const mockRepo: VehicleRepository = {
       list: vi.fn(),
       findByPlate: vi.fn(),
+      create: vi.fn(),
     };
 
     const { result } = renderHook(() => useVehicleByPlate(""), {
