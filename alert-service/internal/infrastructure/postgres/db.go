@@ -15,6 +15,8 @@ import (
 
 // NewConnection creates and returns a new PostgreSQL database connection as a Databaser.
 // It configures the connection pool and pings the database to verify connectivity.
+// If the ping fails, it retries with exponential backoff (5 attempts: 2s, 4s, 8s, 16s)
+// before giving up, so transient DB unavailability at startup does not crash the service.
 func NewConnection(config *env.Configuration, log logger.Logger) (repositories.Databaser, error) {
 	db, err := sql.Open("pgx", config.PostgresURL)
 	if err != nil {
@@ -25,12 +27,23 @@ func NewConnection(config *env.Configuration, log logger.Logger) (repositories.D
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := db.PingContext(ctx); err != nil {
+	const maxRetries = 5
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		err = db.PingContext(ctx)
+		cancel()
+		if err == nil {
+			break
+		}
+		log.Warnw(context.Background(), "database ping failed, retrying",
+			"attempt", attempt, "of", maxRetries, "error", err)
+		if attempt < maxRetries {
+			time.Sleep(time.Duration(1<<attempt) * time.Second) // 2s, 4s, 8s, 16s
+		}
+	}
+	if err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("failed to ping database: %w", err)
+		return nil, fmt.Errorf("failed to ping database after %d attempts: %w", maxRetries, err)
 	}
 
 	log.Infow(context.Background(), "database connection established")
