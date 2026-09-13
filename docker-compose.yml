@@ -1,17 +1,46 @@
 services:
-  # ─── Infrastructure ───
-  postgres:
+  # ─── Infrastructure: Databases (one per microservice) ───
+  postgres-vehicle:
     image: postgres:16
-    container_name: telemetry-postgres
+    container_name: telemetry-postgres-vehicle
     ports:
       - "5433:5432"
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    volumes:
-      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+      POSTGRES_DB: telemetry_vehicle
     healthcheck:
-      test: ["CMD-SHELL", "psql -U postgres -tAc \"SELECT 1 FROM pg_database WHERE datname='telemetry_vehicle'\" | grep -q 1"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telemetry_vehicle"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-geo:
+    image: postgres:16
+    container_name: telemetry-postgres-geo
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: geo_service
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d geo_service"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postgres-alert:
+    image: postgres:16
+    container_name: telemetry-postgres-alert
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: telemetry_alert
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d telemetry_alert"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -48,9 +77,9 @@ services:
     volumes:
       - ./vehicle-service/db/migrations:/migrations
     depends_on:
-      postgres:
+      postgres-vehicle:
         condition: service_healthy
-    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres:5432/telemetry_vehicle?sslmode=disable", "up"]
+    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres-vehicle:5432/telemetry_vehicle?sslmode=disable", "up"]
     restart: "no"
 
   migrate-geo:
@@ -58,9 +87,9 @@ services:
     volumes:
       - ./geo-service/db/migrations:/migrations
     depends_on:
-      postgres:
+      postgres-geo:
         condition: service_healthy
-    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres:5432/geo_service?sslmode=disable", "up"]
+    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres-geo:5432/geo_service?sslmode=disable", "up"]
     restart: "no"
 
   migrate-alert:
@@ -68,9 +97,9 @@ services:
     volumes:
       - ./alert-service/db/migrations:/migrations
     depends_on:
-      postgres:
+      postgres-alert:
         condition: service_healthy
-    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres:5432/telemetry_alert?sslmode=disable", "up"]
+    command: ["-path", "/migrations/", "-database", "postgres://postgres:postgres@postgres-alert:5432/telemetry_alert?sslmode=disable", "up"]
     restart: "no"
 
   # ─── Application services ───
@@ -80,7 +109,7 @@ services:
     ports:
       - "8090:8080"
     environment:
-      DB_HOST: postgres
+      DB_HOST: postgres-vehicle
       DB_PORT: "5432"
       DB_USER: postgres
       DB_PASSWORD: postgres
@@ -107,7 +136,7 @@ services:
     ports:
       - "8081:8081"
     environment:
-      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/geo_service?sslmode=disable
+      POSTGRES_URL: postgres://postgres:postgres@postgres-geo:5432/geo_service?sslmode=disable
       REDIS_ADDR: redis:6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       VEHICLE_SERVICE_URL: http://vehicle-service:8080
@@ -133,7 +162,7 @@ services:
     container_name: telemetry-geo-worker
     command: ["/app/worker"]
     environment:
-      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/geo_service?sslmode=disable
+      POSTGRES_URL: postgres://postgres:postgres@postgres-geo:5432/geo_service?sslmode=disable
       REDIS_ADDR: redis:6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       VEHICLE_SERVICE_URL: http://vehicle-service:8080
@@ -151,7 +180,7 @@ services:
     ports:
       - "8092:8082"
     environment:
-      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/telemetry_alert?sslmode=disable
+      POSTGRES_URL: postgres://postgres:postgres@postgres-alert:5432/telemetry_alert?sslmode=disable
       REDIS_ADDR: redis:6379
       RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
       HTTP_PORT: "8082"

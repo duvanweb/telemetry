@@ -41,11 +41,58 @@ HTTP_PORT=9090 go run ./cmd/api
 
 ## Health check
 
-Each service exposes a liveness endpoint:
+Each service exposes a liveness endpoint that pings its database:
 
 ```bash
 curl http://localhost:8080/health
-# {"status":"ok","service":"vehicle-service"}
+# {"status":"ok","service":"vehicle-service"}       # DB reachable
+
+curl http://localhost:8080/health
+# {"status":"degraded","service":"vehicle-service"}  # DB unreachable
+```
+
+The HTTP status is always **200** — the service process stays alive even when its DB is down. The `status` field in the JSON body indicates whether the database is reachable (`ok`) or not (`degraded`). DB-dependent endpoints return 500 errors, but the service does not crash.
+
+## Database Architecture — One Container per Microservice
+
+Each microservice has its own **isolated PostgreSQL container**. This eliminates the single point of failure of a shared database: if one DB goes down, only its service is affected; the other two services continue operating normally.
+
+| Container               | Host port | Database           | Used by           |
+|-------------------------|-----------|--------------------|-------------------|
+| `telemetry-postgres-vehicle` | `5433`    | `telemetry_vehicle` | vehicle-service   |
+| `telemetry-postgres-geo`     | `5434`    | `geo_service`       | geo-service       |
+| `telemetry-postgres-alert`   | `5435`    | `telemetry_alert`   | alert-service     |
+
+Shared infrastructure (not per-service):
+
+| Container           | Host port | Used by                          |
+|---------------------|-----------|----------------------------------|
+| `telemetry-redis`   | `6379`    | geo-service, alert-service       |
+| `telemetry-rabbitmq`| `5672`    | all services                     |
+
+### DB Failure Resilience
+
+**Startup retry:** Each service's `NewConnection` retries the database ping with exponential backoff (5 attempts: 2s → 4s → 8s → 16s → 32s) before giving up. This gives ~62s for the DB container to recover from a transient failure before the service crashes.
+
+**Runtime resilience:** Go's `database/sql` connection pool automatically re-establishes connections when the DB comes back. The service process does not crash — it returns 500 errors for DB-dependent operations and `{"status":"degraded"}` on the health endpoint.
+
+**Failure isolation:** Because each service has its own DB container, stopping one DB only affects its service:
+
+```bash
+# Stop only the vehicle DB
+docker stop telemetry-postgres-vehicle
+
+# vehicle-service stays running, health returns degraded
+curl http://localhost:8090/health  # → {"status":"degraded","service":"vehicle-service"}
+
+# geo-service and alert-service are completely unaffected
+curl http://localhost:8081/health  # → {"status":"ok","service":"geo-service"}
+curl http://localhost:8092/health  # → {"status":"ok","service":"alert-service"}
+
+# Restart the DB — vehicle-service recovers automatically
+docker start telemetry-postgres-vehicle
+sleep 3
+curl http://localhost:8090/health  # → {"status":"ok","service":"vehicle-service"}
 ```
 
 ## Vehicle Deletion — Saga Pattern (Choreographed)
@@ -160,7 +207,7 @@ curl http://localhost:8092/api/alerts  # → {"data":[],"total":0}
 docker exec telemetry-redis redis-cli EXISTS alert:vehicle:1  # → 0
 
 # 8. Verify positions are gone
-docker exec telemetry-postgres psql -U postgres -d geo_service \
+docker exec telemetry-postgres-geo psql -U postgres -d geo_service \
   -c "SELECT COUNT(*) FROM gps_positions WHERE vehicle_id = 1"  # → 0
 ```
 
