@@ -1,0 +1,15 @@
+package health
+
+import (
+	"go.uber.org/fx"
+
+	"github.com/telemetry-platform/alert-service/internal/core/ports/services"
+)
+
+// Module wires the health domain into FX.
+var Module = fx.Module(
+	"health",
+	fx.Provide(
+		fx.Annotate(NewService, fx.As(new(services.HealthService))),
+	),
+)
